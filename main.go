@@ -21,13 +21,12 @@ func main() {
             fmt.Fprintf(os.Stderr, "%s\n", err)
             return
         }
-        /*
         defer func() {
             err := recover()
             if err != nil {
                 fmt.Println(err)
             }
-        }()*/
+        }()
         ast := parser.ParseFromFile(pathname, f)
         runtime := blue.New(pathname, ast, globals)
         runtime.Run()
