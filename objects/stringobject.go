@@ -2,7 +2,9 @@
 package objects
 
 import (
+    "fmt"
     "bytes"
+    "strings"
     "github.com/Magnus9/blue/errpkg"
 )
 const STRING_MAX = 0x00ffffff
@@ -16,14 +18,18 @@ func (bso *BlStringObject) BlType() *BlTypeObject {
     return bso.header.typeobj
 }
 var blStringSequence = BlSequenceMethods{
-    SeqItem  : blStringSeqItem,
-    SeqConcat: blStringSeqConcat,
-    SeqRepeat: blStringSeqRepeat,
+    SeqItem  : blStringItem,
+    SeqConcat: blStringConcat,
+    SeqRepeat: blStringRepeat,
 }
 var blStringMethods = []BlGFunctionObject {
-    NewBlGFunction("concat", blStringConcat, 1),
-    NewBlGFunction("toupper", blStringToUpper, 0),
-    NewBlGFunction("tolower", blStringToLower, 0),
+    NewBlGFunction("index",      stringIndex,      GFUNC_VARARGS),
+    NewBlGFunction("split",      stringSplit,      GFUNC_VARARGS),
+    NewBlGFunction("concat",     stringConcat,     GFUNC_VARARGS),
+    NewBlGFunction("toupper",    stringToUpper,    GFUNC_NOARGS ),
+    NewBlGFunction("tolower",    stringToLower,    GFUNC_NOARGS ),
+    NewBlGFunction("startswith", stringStartsWith, GFUNC_VARARGS),
+    NewBlGFunction("endswith",   stringEndsWith,   GFUNC_VARARGS),
 }
 var BlStringType BlTypeObject
 
@@ -35,7 +41,7 @@ func NewBlString(value string) *BlStringObject {
     }
 }
 
-func blStringSeqItem(obj BlObject, num int) BlObject {
+func blStringItem(obj BlObject, num int) BlObject {
     sobj := obj.(*BlStringObject)
     if num >= sobj.vsize || num < 0 {
         errpkg.SetErrmsg("subscript position out of bounds")
@@ -44,7 +50,7 @@ func blStringSeqItem(obj BlObject, num int) BlObject {
     return NewBlString(string(sobj.Value[num]))
 }
 
-func blStringSeqConcat(a, b BlObject) BlObject {
+func blStringConcat(a, b BlObject) BlObject {
     sobj := a.(*BlStringObject)
     t, ok := b.(*BlStringObject)
     if !ok {
@@ -55,7 +61,7 @@ func blStringSeqConcat(a, b BlObject) BlObject {
     return NewBlString(sobj.Value + t.Value)
 }
 
-func blStringSeqRepeat(a, b BlObject) BlObject {
+func blStringRepeat(a, b BlObject) BlObject {
     iobj, ok := b.(*BlIntObject)
     if !ok {
         errpkg.SetErrmsg("cant multiply sequence with" + 
@@ -83,8 +89,10 @@ func blStringSeqRepeat(a, b BlObject) BlObject {
     return NewBlString(buf.String())
 }
 
-func blStringRepr(obj BlObject) BlObject {
-    return obj
+func blStringRepr(obj BlObject) *BlStringObject {
+    sobj := obj.(*BlStringObject)
+    return NewBlString(fmt.Sprintf("\"%s\"",
+                       sobj.Value))
 }
 
 func blStringGetMember(obj BlObject,
@@ -121,35 +129,86 @@ func blStringCompare(a, b BlObject) int {
 
 func blStringInit(obj *BlTypeObject,
                   args ...BlObject) BlObject {
-    var str string
-    if blParseArguments("s", args, &str) == -1 {
+    var arg BlObject
+    if blParseArguments("o", args, &arg) == -1 {
         return nil
     }
-    return NewBlString(str)
+    typeobj := arg.BlType()
+    if fn := typeobj.Repr; fn != nil {
+        return fn(arg)
+    }
+    /*
+     * This is more of an internal error. Every object
+     * should have a Repr function attached to it.
+     */
+    errpkg.SetErrmsg("'%s' object has no representation",
+                     typeobj.Name)
+    return nil
 }
 
 /*
- * The beginning of string methods.
+ * Splits a string into a list using var 'sep' as
+ * the separator. This function does not split
+ * if the left/right side is empty.
  */
-func blStringConcat(obj BlObject,
-                    args ...BlObject) BlObject {
-    sobj, ok := obj.(*BlStringObject)
-    if !ok {
-        errpkg.InternError("expected string object")
+func stringSplit(obj BlObject, args ...BlObject) BlObject {
+    var sep string = " "
+    var max int64  = -1
+    if blParseArguments("|si", args, &sep, &max) == -1 {
+        return nil
     }
+    self := obj.(*BlStringObject)
+    lobj := NewBlList(0)
+    if max == 0 {
+        lobj.Append(NewBlString(self.Value))
+    } else {
+        siz := len(sep)
+        var j uint; var mark int
+        for i := 0; i < self.vsize; i++ {
+            if int(j) == int(max) {
+                break
+            }
+            tot := i + siz
+            if tot >= self.vsize {
+                break
+            }
+            if self.Value[i:tot] == sep {
+                if i != 0 {
+                    lobj.Append(NewBlString(self.Value[mark:i]))
+                }
+                mark = tot
+                j++
+            }
+        }
+        if mark < self.vsize {
+            lobj.Append(NewBlString(self.Value[mark:]))
+        }
+    }
+    return lobj
+}
+
+func stringIndex(obj BlObject, args ...BlObject) BlObject {
     var str string
     if blParseArguments("s", args, &str) == -1 {
         return nil
     }
+    self := obj.(*BlStringObject)
+    return NewBlInt(int64(strings.Index(self.Value, str)))
+}
+
+func stringConcat(obj BlObject,
+                  args ...BlObject) BlObject {
+    var str string
+    if blParseArguments("s", args, &str) == -1 {
+        return nil
+    }
+    sobj := obj.(*BlStringObject)
     return NewBlString(sobj.Value + str)
 }
 
-func blStringToUpper(obj BlObject,
-                     args ...BlObject) BlObject {
-    sobj, ok := obj.(*BlStringObject)
-    if !ok {
-        errpkg.InternError("expected string object")
-    }
+func stringToUpper(obj BlObject,
+                   args ...BlObject) BlObject {
+    sobj := obj.(*BlStringObject)
     var buf bytes.Buffer
     for _, ch := range sobj.Value {
         num := ch
@@ -161,12 +220,9 @@ func blStringToUpper(obj BlObject,
     return NewBlString(buf.String())
 }
 
-func blStringToLower(obj BlObject,
-                     args ...BlObject) BlObject {
-    sobj, ok := obj.(*BlStringObject)
-    if !ok {
-        errpkg.InternError("expected string object")
-    }
+func stringToLower(obj BlObject,
+                   args ...BlObject) BlObject {
+    sobj := obj.(*BlStringObject)
     var buf bytes.Buffer
     for _, ch := range sobj.Value {
         num := ch
@@ -176,6 +232,41 @@ func blStringToLower(obj BlObject,
         buf.WriteByte(byte(num))
     }
     return NewBlString(buf.String())
+}
+
+func stringStartsWith(obj BlObject,
+                      args ...BlObject) BlObject {
+    var str string
+    var s int64
+    if blParseArguments("s|i", args, &str, &s) == -1 {
+        return nil
+    }
+    self := obj.(*BlStringObject)
+    if s < int64(0) || s > int64(self.vsize) {
+        return BlFalse
+    }
+    if strings.HasPrefix(self.Value[s:], str) {
+        return BlTrue
+    }
+    return BlFalse
+}
+
+func stringEndsWith(obj BlObject,
+                    args ...BlObject) BlObject {
+    self := obj.(*BlStringObject)
+    var str string
+    var s int64 = int64(self.vsize - 1)
+    if blParseArguments("s|i", args, &str, &s) == -1 {
+        return nil
+    }
+    s++
+    if s < int64(0) || s > int64(self.vsize) {
+        return BlFalse
+    }
+    if strings.HasSuffix(self.Value[:s], str) {
+        return BlTrue
+    }
+    return BlFalse
 }
 
 func blInitString() {
