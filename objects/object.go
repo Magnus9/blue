@@ -2,6 +2,7 @@
 package objects
 
 import (
+    "strings"
     "github.com/Magnus9/blue/errpkg"
 )
 type BlObject interface {
@@ -10,13 +11,20 @@ type BlObject interface {
 type blHeader struct {
     typeobj *BlTypeObject
 }
+const (
+    T_STRING = iota
+    T_INT
+    T_FLOAT
+    T_BOOL
+    T_NIL
+)
 var (
     BlTrue  = NewBlBool(true)
     BlFalse = NewBlBool(false)
     BlNil   = NewBlNil()
 )
 
-type reprfunc func(BlObject) BlObject
+type reprfunc func(BlObject) *BlStringObject
 type fillfunc func(BlObject, map[string]struct{}, int) int
 type getterfunc func(BlObject, string) BlObject
 type setterfunc func(BlObject, string, BlObject) int
@@ -26,6 +34,12 @@ type compfunc func(BlObject, BlObject) int
 
 type unaryfunc func(BlObject) BlObject
 type binaryfunc func(BlObject, BlObject) BlObject
+
+type BlFields struct {
+    name      string
+    blType    int
+    value     interface{}
+}
 
 type BlNumberMethods struct {
     NumNeg    unaryfunc
@@ -66,6 +80,7 @@ type BlTypeObject struct {
     Numbers     *BlNumberMethods
     Sequence    *BlSequenceMethods
     methods     []BlGFunctionObject
+    fields      []BlFields
     members     map[string]BlObject
     base        *BlTypeObject
 }
@@ -96,76 +111,162 @@ func locate(typeobj *BlTypeObject, name string) BlObject {
     return ret
 }
 
-func blParseArguments(format string, args []BlObject,
+/*
+ * Used to parse arguments for builtin functions.
+ */
+func blParseArguments(fmts string, args []BlObject,
                       values ...interface{}) int {
-    fmtLen := len(format)
-    if fmtLen != len(args) {
-        errpkg.SetErrmsg("argument mismatch. Expected (%d)" +
-                         " , got (%d)", fmtLen, len(args))
-        return -1
+    var reqLen, maxLen int
+    var fmtLen = len(fmts)
+    pos := strings.IndexByte(fmts, '|')
+    if pos >= 0 {
+        reqLen = pos
+        maxLen = fmtLen - 1
+    } else {
+        reqLen = fmtLen
+        maxLen = reqLen
     }
+    arglen := len(args)
+    /*
+     * This algorithm might be pretty shabby. But it yielded
+     * the shortest amount of code i found. The last case
+     * will also run if pos >= 0 and arglen >= maxLen or
+     * arglen <= maxLen.
+     */
+    switch {
+        case arglen > maxLen && pos >= 0:
+            errpkg.SetErrmsg("expected at most (%d) arguments" +
+                             ", got (%d)", maxLen, arglen)
+            return -1
+        case arglen < reqLen && pos >= 0:
+            errpkg.SetErrmsg("expected at least (%d) arguments" +
+                             ", got (%d)", reqLen, arglen)
+            return -1
+        case arglen > maxLen || arglen < reqLen:
+            errpkg.SetErrmsg("expected exactly (%d) arguments" +
+                             ", got (%d)", reqLen, arglen)
+            return -1
+    }
+    /*
+     * Make sure that maxLen is equal to the length of the
+     * values passed. If the wrong value type is passed,
+     * just continue the for loop below, there is just
+     * too many errors to report..
+     */
+    valueLen := len(values)
+    if maxLen != valueLen {
+        errpkg.InternError("expected exactly (%d) values" +
+                           ", got (%d)", maxLen, valueLen)
+    }
+    var argpos int = -1
     for i := 0; i < fmtLen; i++ {
-        switch ch := format[i]; ch {
-            case 'i':
-                iObj, ok := args[i].(*BlIntObject)
-                if !ok {
-                    errpkg.SetErrmsg("expected int object")
-                    return -1
-                }
-                iptr := values[i].(*int64)
-                *iptr = iObj.Value
-            case 's':
-                sObj, ok := args[i].(*BlStringObject)
-                if !ok {
-                    errpkg.SetErrmsg("expected string object")
-                    return -1
-                }
-                sptr := values[i].(*string)
-                *sptr = sObj.Value
+        argpos++
+        switch ch := fmts[i]; ch {
+        case 's':
+            sobj, ok := args[argpos].(*BlStringObject)
+            if !ok {
+                errpkg.SetErrmsg("expected string")
+                return -1
+            }
+            sval, ok := values[argpos].(*string)
+            if !ok {
+                continue
+            }
+            *sval = sobj.Value
+        case 'i':
+            iobj, ok := args[argpos].(*BlIntObject)
+            if !ok {
+                errpkg.SetErrmsg("expected integer")
+                return -1
+            }
+            ival, ok := values[argpos].(*int64)
+            if !ok {
+                continue
+            }
+            *ival = iobj.Value
+        case 'f':
+            fobj, ok := args[argpos].(*BlFloatObject)
+            if !ok {
+                errpkg.SetErrmsg("expected float")
+                return -1
+            }
+            fval, ok := values[argpos].(*float64)
+            if !ok {
+                continue
+            }
+            *fval = fobj.value
+        case 'b':
+            bobj, ok := args[argpos].(*BlBoolObject)
+            if !ok {
+                errpkg.SetErrmsg("expected boolean")
+                return -1
+            }
+            bval, ok := values[argpos].(*bool)
+            if !ok {
+                continue
+            }
+            *bval = bobj.value
+        case 'o':
+            oval, ok := values[argpos].(*BlObject)
+            if !ok {
+                continue
+            }
+            *oval = args[argpos]
+        case '|':
+            argpos--
         }
     }
     return 0
 }
 
 func blTypeFinish(typeobj *BlTypeObject) {
-    typeobj.members = make(map[string]BlObject)
+    m := make(map[string]BlObject)
     if typeobj.methods != nil {
-        for i := 0; i < len(typeobj.methods); i++ {
-            m := &typeobj.methods[i]
-            typeobj.members[m.name] = m
-        }
+        blInsertFunctions(typeobj.methods, m)
+    }
+    if typeobj.fields  != nil {
+        blInsertFields(typeobj.fields, m)
+    }
+    typeobj.members = m
+}
+
+/*
+ * Insert a function into a map that either belongs
+ * to a module object or a type object.
+ */
+func blInsertFunctions(funcs []BlGFunctionObject,
+                       m map[string]BlObject) {
+    for i := 0; i < len(funcs); i++ {
+        f := &funcs[i]; m[f.Name] = f       
     }
 }
 
-func BlInitTypes() {
-    // Initialize the string type.
-    blInitString()
-    // Initialize the int type.
-    blInitInt()
-    // Initialize the float type.
-    blInitFloat()
-    // Initialize the list type.
-    blInitList()
-    // Initialize the range type.
-    blInitRange()
-    // Initialize the bool type.
-    blInitBool()
-    // Initialize the nil type.
-    blInitNil()
-    // Initialize the class type.
-    blInitClass()
-    // Initialize the instance type.
-    blInitInstance()
-    // Initialize the method type.
-    blInitMethod()
-    // Initialize the function type.
-    blInitFunction()
-    // Initialize the gmethod type.
-    blInitGMethod()
-    // Initialize the gfunction type.
-    blInitGFunction()
-    // Initialize the `type' type.
-    blInitType()
+/*
+ * Insert a field into a map that either belongs to
+ * a module object or a type object. It is done this
+ * way to ensure rules on what can be added as a field.
+ * i.e, adding a method as a field is not allowed, since
+ * methods are represented with typeobj.methods.
+ */
+func blInsertFields(fields []BlFields, m map[string]BlObject) {
+    for i := 0; i < len(fields); i++ {
+        f := &fields[i]
+        switch f.blType {
+            case T_STRING:
+                m[f.name] = NewBlString(f.value.(string))
+            case T_INT:
+                m[f.name] = NewBlInt(f.value.(int64))
+            case T_FLOAT:
+                m[f.name] = NewBlFloat(f.value.(float64))
+            case T_BOOL:
+                m[f.name] = NewBlBool(f.value.(bool))
+            case T_NIL:
+                m[f.name] = NewBlNil()
+            default:
+                errpkg.InternError("trying to add field with" +
+                                   " unknown type (%d)", f.blType)
+        }
+    }
 }
 
 /*
@@ -224,4 +325,39 @@ out:
     errpkg.SetErrmsg("types cannot be ordered, '%s' and '%s'",
                      aTobj.Name, bTobj.Name)
     return -2
+}
+
+func BlInitTypes() {
+    // Initialize the string type.
+    blInitString()
+    // Initialize the int type.
+    blInitInt()
+    // Initialize the float type.
+    blInitFloat()
+    // Initialize the list type.
+    blInitList()
+    // Initialize the range type.
+    blInitRange()
+    // Initialize the file type.
+    blInitFile()
+    // Initialize the socket type.
+    blInitSocket()
+    // Initialize the bool type.
+    blInitBool()
+    // Initialize the nil type.
+    blInitNil()
+    // Initialize the class type.
+    blInitClass()
+    // Initialize the instance type.
+    blInitInstance()
+    // Initialize the method type.
+    blInitMethod()
+    // Initialize the function type.
+    blInitFunction()
+    // Initialize the gmethod type.
+    blInitGMethod()
+    // Initialize the gfunction type.
+    blInitGFunction()
+    // Initialize the `type' type.
+    blInitType()
 }
