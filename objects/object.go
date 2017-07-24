@@ -131,7 +131,7 @@ func blParseArguments(fmts string, args []BlObject,
      * This algorithm might be pretty shabby. But it yielded
      * the shortest amount of code i found. The last case
      * will also run if pos >= 0 and arglen >= maxLen or
-     * arglen <= maxLen.
+     * arglen <= reqLen1.
      */
     switch {
         case arglen > maxLen && pos >= 0:
@@ -161,6 +161,9 @@ func blParseArguments(fmts string, args []BlObject,
     var argpos int = -1
     for i := 0; i < fmtLen; i++ {
         argpos++
+        if argpos >= arglen {
+            break
+        }
         switch ch := fmts[i]; ch {
         case 's':
             sobj, ok := args[argpos].(*BlStringObject)
