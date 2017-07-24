@@ -23,10 +23,14 @@ func blInitBuiltins() {
     AddToBuiltins("float", &objects.BlFloatType)
     // Put the list object into builtins.
     AddToBuiltins("list", &objects.BlListType)
+    // Put the file object into builtins.
+    AddToBuiltins("file", &objects.BlFileType)
     // Put the bool object into builtins.
     AddToBuiltins("bool", &objects.BlBoolType)
     // Put the int object into builtins (64bit).
     AddToBuiltins("int", &objects.BlIntType)
     // Put the nil object into builtins (no-val).
     AddToBuiltins("nil", &objects.BlNilType)
+    // Put the socket object into builtins.
+    AddToBuiltins("socket", &objects.BlSocketType)
 }
