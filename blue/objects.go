@@ -316,8 +316,6 @@ func blPrint(obj objects.BlObject) int {
                          typeobj.Name)
         return -1
     }
-    ret := typeobj.Repr(obj)
-    sobj := ret.(*objects.BlStringObject)
-    fmt.Println(sobj.Value)
+    fmt.Println(typeobj.Repr(obj).Value)
     return 0
 }
