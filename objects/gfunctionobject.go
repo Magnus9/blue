@@ -12,12 +12,16 @@ package objects
 import (
     "fmt"
 )
-type gfunction func(obj BlObject,
-                    args ...BlObject) BlObject
+const (
+    GFUNC_NOARGS  = 1
+    GFUNC_VARARGS = 2
+)
+type gfunction func(BlObject, ...BlObject) BlObject
 type BlGFunctionObject struct {
     header   blHeader
-    name     string
+    Name     string
     Function gfunction
+    Flags    int
     Params   int
 }
 func (bgfo *BlGFunctionObject) BlType() *BlTypeObject {
@@ -26,25 +30,25 @@ func (bgfo *BlGFunctionObject) BlType() *BlTypeObject {
 var BlGFunctionType BlTypeObject
 
 func NewBlGFunction(name string, function gfunction,
-                    params int) BlGFunctionObject {
+                    flags int) BlGFunctionObject {
     return BlGFunctionObject{
         header  : blHeader{&BlGFunctionType},
-        name    : name,
+        Name    : name,
         Function: function,
-        Params  : params,
+        Flags   : flags,
     }
 }
 
-func blGFunctionRepr(obj BlObject) BlObject {
+func blGFunctionRepr(obj BlObject) *BlStringObject {
     fobj := obj.(*BlGFunctionObject)
-    str := fmt.Sprintf("<builtin-function '%s', params=%d>\n",
-                       fobj.name, fobj.Params)
+    str := fmt.Sprintf("<builtin-function '%s'>",
+                       fobj.Name)
     return NewBlString(str)
 }
 
 func blGFunctionEvalCond(obj BlObject) bool {
     fobj := obj.(*BlGFunctionObject)
-    if fobj.Params > 0 {
+    if (fobj.Flags & GFUNC_VARARGS) != 0 {
         return true
     }
     return false
