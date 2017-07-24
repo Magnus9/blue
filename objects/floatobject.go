@@ -89,7 +89,7 @@ func blFloatCoerce(a, b *BlObject) int {
     return 0
 }
 
-func blFloatRepr(obj BlObject) BlObject {
+func blFloatRepr(obj BlObject) *BlStringObject {
     fobj := obj.(*BlFloatObject)
     return NewBlString(fmt.Sprintf("%f", fobj.value))
 }

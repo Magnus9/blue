@@ -30,7 +30,7 @@ func NewBlClass(name string, base BlObject) BlObject {
     }
 }
 
-func blClassRepr(obj BlObject) BlObject {
+func blClassRepr(obj BlObject) *BlStringObject {
     cobj := obj.(*BlClassObject)
     str := fmt.Sprintf("<class '%s'>", cobj.name)
     

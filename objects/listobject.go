@@ -24,6 +24,13 @@ var blListSequence = BlSequenceMethods{
     SeqAssItem   : blListSeqAssItem,
     SeqRepeat    : blListSeqRepeat,
 }
+var blListMethods = []BlGFunctionObject{
+    NewBlGFunction("append",  listAppend,  GFUNC_VARARGS),
+    NewBlGFunction("prepend", listPrepend, GFUNC_VARARGS),
+    NewBlGFunction("insert",  listInsert,  GFUNC_VARARGS),
+    NewBlGFunction("trunc",   listTrunc,   GFUNC_NOARGS ),
+    NewBlGFunction("reverse", listReverse, GFUNC_NOARGS ),
+}
 var BlListType BlTypeObject
 
 func NewBlList(lsize int) *BlListObject {
@@ -76,7 +83,7 @@ func blListSeqRepeat(a, b BlObject) BlObject {
     return ret
 }
 
-func blListRepr(obj BlObject) BlObject {
+func blListRepr(obj BlObject) *BlStringObject {
     lobj := obj.(*BlListObject)
     
     var buf bytes.Buffer
@@ -85,11 +92,15 @@ func blListRepr(obj BlObject) BlObject {
         if i > 0 {
             buf.WriteString(", ")
         }
-        sobj := elem.BlType().Repr(elem).(*BlStringObject)
+        sobj := elem.BlType().Repr(elem)
         buf.WriteString(sobj.Value)
     }
     buf.WriteByte(']')
     return NewBlString(buf.String())
+}
+
+func blListGetMember(obj BlObject, name string) BlObject {
+    return genericGetMember(obj.BlType(), name, obj)
 }
 
 func blListEvalCond(obj BlObject) bool {
@@ -124,13 +135,84 @@ func blListCompare(a, b BlObject) int {
     }
 }
 
+/*
+ * The beginning of list methods..
+ */
+func listAppend(self BlObject, args ...BlObject) BlObject {
+    var obj BlObject
+    if blParseArguments("o", args, &obj) == -1 {
+        return nil
+    }
+    lobj := self.(*BlListObject)
+    lobj.list = append(lobj.list, obj)
+    lobj.lsize++
+
+    return BlNil
+}
+
+func listPrepend(self BlObject, args ...BlObject) BlObject {
+    var obj BlObject
+    if blParseArguments("o", args, &obj) == -1 {
+        return nil
+    }
+    lobj := self.(*BlListObject)
+    lobj.list = append([]BlObject{obj}, lobj.list...)
+    lobj.lsize++
+
+    return BlNil
+}
+
+func listInsert(self BlObject, args ...BlObject) BlObject {
+    var obj BlObject
+    var pos int64
+    if blParseArguments("oi", args, &obj, &pos) == -1 {
+        return nil
+    }
+    lobj := self.(*BlListObject)
+    if pos < 0 || pos >= int64(lobj.lsize) {
+        errpkg.SetErrmsg("position out of bounds")
+        return nil
+    }
+    lobj.list[pos] = obj
+
+    return BlNil
+}
+
+func listTrunc(self BlObject, args ...BlObject) BlObject {
+    if blParseArguments("", args) == -1 {
+        return nil
+    }
+    lobj := self.(*BlListObject)
+    lobj.list  = make([]BlObject, 0)
+    lobj.lsize = 0
+    return BlNil
+}
+
+func listReverse(self BlObject, args ...BlObject) BlObject {
+    if blParseArguments("", args) == -1 {
+        return nil
+    }
+    lobj := self.(*BlListObject)
+    list := make([]BlObject, lobj.lsize)
+    var j int
+    for i := lobj.lsize - 1; i >= 0; i-- {
+        list[j] = lobj.list[i]
+        j++
+    }
+    lobj.list = list
+    return BlNil
+}
+
 func blInitList() {
     BlListType = BlTypeObject{
-        header  : blHeader{&BlTypeType},
-        Name    : "list",
-        Repr    : blListRepr,
-        EvalCond: blListEvalCond,
-        Compare : blListCompare,
-        Sequence: &blListSequence,
+        header   : blHeader{&BlTypeType},
+        Name     : "list",
+        Repr     : blListRepr,
+        GetMember: blListGetMember,
+        EvalCond : blListEvalCond,
+        Compare  : blListCompare,
+        Sequence : &blListSequence,
+        methods  : blListMethods,
     }
+    blTypeFinish(&BlListType)
 }

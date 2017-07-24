@@ -17,7 +17,7 @@ func NewBlBool(value bool) BlObject {
     }
 }
 
-func blBoolRepr(obj BlObject) BlObject {
+func blBoolRepr(obj BlObject) *BlStringObject {
     bobj := obj.(*BlBoolObject)
     if bobj.value == true {
         return NewBlString("true")

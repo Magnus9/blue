@@ -153,7 +153,7 @@ func blIntSeqAssItem(obj BlObject, value BlObject,
     return 0
 }
 
-func blIntRepr(obj BlObject) BlObject {
+func blIntRepr(obj BlObject) *BlStringObject {
     iobj := obj.(*BlIntObject)
     str := fmt.Sprintf("%d", iobj.Value)
 

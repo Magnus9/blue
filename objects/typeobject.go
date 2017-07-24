@@ -13,7 +13,7 @@ import (
 )
 var BlTypeType BlTypeObject
 
-func blTypeRepr(obj BlObject) BlObject {
+func blTypeRepr(obj BlObject) *BlStringObject {
     typeobj := obj.(*BlTypeObject)
     str := fmt.Sprintf("<class '%s'>", typeobj.Name)
 

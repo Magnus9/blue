@@ -22,7 +22,7 @@ func NewBlRange(s, e int64) *BlRangeObject {
     }
 }
 
-func blRangeRepr(obj BlObject) BlObject {
+func blRangeRepr(obj BlObject) *BlStringObject {
     robj := obj.(*BlRangeObject)
 
     return NewBlString(fmt.Sprintf("%d..%d", robj.s,

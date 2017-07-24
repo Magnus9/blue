@@ -18,7 +18,7 @@ func NewBlNil() BlObject {
     }
 }
 
-func blNilRepr(obj BlObject) BlObject {
+func blNilRepr(obj BlObject) *BlStringObject {
     return NewBlString("nil")
 }
 

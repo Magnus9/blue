@@ -39,7 +39,7 @@ func NewBlFunction(name string, params []string,
     return bfo
 }
 
-func blFunctionRepr(obj BlObject) BlObject {
+func blFunctionRepr(obj BlObject) *BlStringObject {
     fobj := obj.(*BlFunctionObject)
     str := fmt.Sprintf("<function '%s', params=%d>\n",
                        fobj.name, fobj.ParamLen)

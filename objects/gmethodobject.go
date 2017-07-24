@@ -6,7 +6,7 @@ import (
 )
 type BlGMethodObject struct {
     header   blHeader
-    class    BlObject
+    Class    BlObject
     Self     BlObject
     F        *BlGFunctionObject
 }
@@ -19,22 +19,22 @@ func newBlGMethod(class BlObject, self BlObject,
                   f *BlGFunctionObject) BlObject {
     return &BlGMethodObject{
         header  : blHeader{&BlGMethodType},
-        class   : class,
+        Class   : class,
         Self    : self,
         F       : f,
     }
 }
 
-func blGMethodRepr(obj BlObject) BlObject {
+func blGMethodRepr(obj BlObject) *BlStringObject {
     mobj := obj.(*BlGMethodObject)
     
     params := mobj.F.Params
     if mobj.Self == nil {
         params++   
     }
-    typeobj := mobj.class.(*BlTypeObject)
+    typeobj := mobj.Class.(*BlTypeObject)
     str := fmt.Sprintf("<builtin-method '%s.%s', params=%d>",
-                       typeobj.Name, mobj.F.name,
+                       typeobj.Name, mobj.F.Name,
                        params)
     return NewBlString(str)
 }

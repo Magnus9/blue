@@ -26,7 +26,7 @@ func NewBlInstance(class *BlClassObject) *BlInstanceObject {
     }
 }
 
-func blInstanceRepr(obj BlObject) BlObject {
+func blInstanceRepr(obj BlObject) *BlStringObject {
     iobj := obj.(*BlInstanceObject)
     str := fmt.Sprintf("<class '%s' instance>", iobj.class.name)
     return NewBlString(str)
