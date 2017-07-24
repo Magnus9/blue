@@ -390,8 +390,30 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
                     goto err
                 }
             case *objects.BlGMethodObject:
-                ret = e.callBuiltin(t.F, node.Children[1],
-                                    t.Self, true)
+                args := node.Children[1]
+                /*
+                 * Methods without a receiver expects the first
+                 * arg to be the object of the class the method
+                 * belongs to. This means that if args.Nchildren
+                 * is < 1 or the first child is not the expected
+                 * type, the call fails.
+                 */
+                rcv := t.Self
+                if rcv == nil {
+                    if args.Nchildren > 0 {
+                        rcv = e.exec(args.Children[0])
+                    }
+                    if rcv == nil || rcv.BlType() != t.Class {
+                        tobj := t.Class.(*objects.BlTypeObject)
+                        errpkg.SetErrmsg("method '%s' requires a '%s'" +
+                                         " object as receiver", t.F.Name,
+                                         tobj.Name)
+                        goto err
+                    }
+                    args.Children = args.Children[1:]
+                    args.Nchildren--
+                }
+                ret = e.callBuiltin(t.F, args, rcv, true)
                 if ret == nil {
                     goto err
                 }
@@ -417,7 +439,8 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             }
             return ret
         case token.PRINT:
-            ret := e.printStmt(node)
+            obj := e.exec(node.Children[0])
+            ret := blPrint(obj)
             if ret == -1 {
                 goto err
             }
@@ -673,12 +696,10 @@ func (e *Eval) augassign(node *interm.Node) int {
 func (e *Eval) callBuiltin(
 f *objects.BlGFunctionObject, args *interm.Node,
 rcv objects.BlObject, meth bool) objects.BlObject {
-    numParams := f.Params
-    if rcv == nil && meth {
-        numParams++
-    }
-    if !e.verifyParamArgCount(numParams,
-                              args.Nchildren) {
+    if (f.Flags & objects.GFUNC_NOARGS) != 0 &&
+        args.Nchildren > 0 {
+        errpkg.SetErrmsg("%s() takes no arguments",
+                         f.Name)
         return nil
     }
     arglist := make([]objects.BlObject, args.Nchildren)
@@ -687,9 +708,6 @@ rcv objects.BlObject, meth bool) objects.BlObject {
     }
     if !meth {
         return f.Function(nil, arglist...)
-    }
-    if rcv == nil {
-        return f.Function(arglist[0], arglist[1:]...)
     }
     return f.Function(rcv, arglist...)
 }
@@ -745,9 +763,4 @@ func (e *Eval) callType(obj *objects.BlTypeObject,
         arglist[i] = e.exec(arg)
     }
     return obj.BlType().Init(obj, arglist...)
-}
-
-func (e *Eval) printStmt(node *interm.Node) int {
-    obj := e.exec(node.Children[0])
-    return blPrint(obj)
 }
