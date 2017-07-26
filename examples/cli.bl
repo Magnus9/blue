@@ -1,0 +1,12 @@
+
+===
+    Example testing out a AF_UNIX domain TCP stream
+    client.
+===
+sock = new socket(socket.AF_INET, socket.SOCK_STREAM,
+                  0)
+sock.connect(["localhost", 4242])
+len = sock.write("Some arbitrary data..")
+print("Wrote " + new string(len) + " bytes")
+
+sock.close()

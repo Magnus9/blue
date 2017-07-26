@@ -1,0 +1,27 @@
+
+===
+    Example testing out a AF_INET domain TCP stream
+    server.
+===
+
+def handle_client(cli)
+    # unpacking values from sequence objects needs to be
+    # patched in..
+    pair = cli.getaddr()
+    print("Received connection from: ".concat(pair[0]) + \
+          "[" + new string(pair[1]) + "]")
+    print("Trying to read some data...")
+    rcv = cli.read(1024)
+    print(rcv)
+end
+
+sock = new socket(socket.AF_INET, socket.SOCK_STREAM,
+                  0)
+sock.bind(["localhost", 4242])
+sock.listen(1)
+
+while 1 do
+    cli = sock.accept()
+    handle_client(cli)
+    cli.close()
+end
