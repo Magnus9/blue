@@ -1,6 +1,6 @@
 
 ===
-    Example testing out a AF_UNIX domain TCP stream
+    Example testing out a AF_INET domain TCP stream
     client.
 ===
 sock = new socket(socket.AF_INET, socket.SOCK_STREAM,
