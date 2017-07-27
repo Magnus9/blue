@@ -64,7 +64,7 @@ func blBoolInit(obj *BlTypeObject,
     }
     switch t := arg.(type) {
         case *BlBoolObject:
-            return BlTrue
+            return arg
         case *BlIntObject:
             if t.Value != 0 {
                 return BlTrue
