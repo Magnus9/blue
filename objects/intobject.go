@@ -183,11 +183,18 @@ func blIntCompare(a, b BlObject) int {
 
 func blIntInit(obj *BlTypeObject,
                args ...BlObject) BlObject {
-    var value int64
-    if blParseArguments("i", args, &value) == -1 {
+    var arg BlObject
+    if blParseArguments("o", args, &arg) == -1 {
         return nil
     }
-    return NewBlInt(value)
+    switch t := arg.(type) {
+        case *BlIntObject:
+            return t
+        case *BlFloatObject:
+            return NewBlInt(int64(t.value))
+    }
+    errpkg.SetErrmsg("expected number")
+    return nil
 }
 
 func blInitInt() {
