@@ -1,6 +1,8 @@
 
 package objects
 
+import "github.com/Magnus9/blue/errpkg"
+
 type BlBoolObject struct {
     header blHeader
     value  bool
@@ -46,6 +48,34 @@ func blBoolCompare(a, b BlObject) int {
     }
 }
 
+/*
+ * Patch in the use of EvalCond in later stages.
+ * For now there is enough conditions as it is,
+ * so keep it simple.
+ */
+func blBoolInit(typeobj *BlTypeObject,
+                args ...BlObject) BlObject {
+    var arg BlObject
+    if blParseArguments("|o", args, &arg) == -1 {
+        return nil
+    }
+    if arg == nil {
+        return NewBlBool(false)
+    }
+    switch obj := arg.(type) {
+        case *BlBoolObject:
+            return NewBlBool(obj.value)
+        case *BlIntObject:
+            if obj.Value != 0 {
+                return NewBlBool(true)
+            }
+            return NewBlBool(false)
+        default:
+            errpkg.SetErrmsg("expected bool or int")
+    }
+    return nil
+}
+
 func blInitBool() {
     BlBoolType = BlTypeObject{
         header  : blHeader{&BlTypeType},
@@ -53,6 +83,7 @@ func blInitBool() {
         Repr    : blBoolRepr,
         EvalCond: blBoolEvalCond,
         Compare : blBoolCompare,
+        Init    : blBoolInit,
     }
     blTypeFinish(&BlBoolType)
 }
