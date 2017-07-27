@@ -115,6 +115,25 @@ func blFloatCompare(a, b BlObject) int {
     }
 }
 
+func blFloatInit(obj *BlTypeObject,
+                 args ...BlObject) BlObject {
+    var arg BlObject
+    if blParseArguments("|o", args, &arg) == -1 {
+        return nil
+    }
+    if arg == nil {
+        return NewBlFloat(0.0)
+    }
+    switch t := arg.(type) {
+        case *BlFloatObject:
+            return t
+        case *BlIntObject:
+            return NewBlFloat(float64(t.Value))
+    }
+    errpkg.SetErrmsg("expected number")
+    return nil
+}
+
 func blInitFloat() {
     BlFloatType = BlTypeObject{
         header  : blHeader{&BlTypeType},
@@ -122,6 +141,7 @@ func blInitFloat() {
         Repr    : blFloatRepr,
         EvalCond: blFloatEvalCond,
         Compare : blFloatCompare,
+        Init    : blFloatInit,
         Numbers : &blFloatNumbers,
     }
 }
