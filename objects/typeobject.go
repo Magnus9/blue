@@ -39,8 +39,8 @@ func blTypeGetMember(obj BlObject,
 func blTypeInit(obj *BlTypeObject,
                 args ...BlObject) BlObject {
     if obj.Init == nil {
-        errpkg.SetErrmsg("'%s' object is missing init" +
-                         " function", obj.Name)
+        errpkg.SetErrmsg("'%s' object can not be" +
+                         " constructed", obj.Name)
         return nil
     }
     return obj.Init(obj, args...)
