@@ -53,7 +53,7 @@ func blBoolCompare(a, b BlObject) int {
  * For now there is enough conditions as it is,
  * so keep it simple.
  */
-func blBoolInit(typeobj *BlTypeObject,
+func blBoolInit(obj *BlTypeObject,
                 args ...BlObject) BlObject {
     var arg BlObject
     if blParseArguments("|o", args, &arg) == -1 {
@@ -62,11 +62,11 @@ func blBoolInit(typeobj *BlTypeObject,
     if arg == nil {
         return NewBlBool(false)
     }
-    switch obj := arg.(type) {
+    switch t := arg.(type) {
         case *BlBoolObject:
-            return NewBlBool(obj.value)
+            return NewBlBool(t.value)
         case *BlIntObject:
-            if obj.Value != 0 {
+            if t.Value != 0 {
                 return NewBlBool(true)
             }
             return NewBlBool(false)
