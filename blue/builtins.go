@@ -29,8 +29,6 @@ func blInitBuiltins() {
     AddToBuiltins("bool", &objects.BlBoolType)
     // Put the int object into builtins (64bit).
     AddToBuiltins("int", &objects.BlIntType)
-    // Put the nil object into builtins (no-val).
-    AddToBuiltins("nil", &objects.BlNilType)
     // Put the socket object into builtins.
     AddToBuiltins("socket", &objects.BlSocketType)
 }
