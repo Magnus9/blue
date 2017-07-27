@@ -60,16 +60,16 @@ func blBoolInit(obj *BlTypeObject,
         return nil
     }
     if arg == nil {
-        return NewBlBool(false)
+        return BlFalse
     }
     switch t := arg.(type) {
         case *BlBoolObject:
-            return NewBlBool(t.value)
+            return BlTrue
         case *BlIntObject:
             if t.Value != 0 {
-                return NewBlBool(true)
+                return BlTrue
             }
-            return NewBlBool(false)
+            return BlFalse
         default:
             errpkg.SetErrmsg("expected bool or int")
     }
