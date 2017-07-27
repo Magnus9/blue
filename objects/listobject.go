@@ -151,12 +151,15 @@ func blListInit(obj *BlTypeObject, args ...BlObject) BlObject {
     if blParseArguments("|o", args, &arg) == -1 {
         return nil
     }
+    lobj := NewBlList(0)
+    if arg == nil {
+        return lobj
+    }
     typeobj := arg.BlType()
     if seq := typeobj.Sequence; seq != nil {
         if seq.SeqItem == nil || seq.SeqSize == nil {
             goto err
         }
-        lobj := NewBlList(0)
         for i := 0; i < seq.SeqSize(arg); i++ {
             lobj.Append(seq.SeqItem(arg, i))
         }
