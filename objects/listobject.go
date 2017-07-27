@@ -20,9 +20,10 @@ func (blo *BlListObject) Append(obj BlObject) {
     blo.lsize++
 }
 var blListSequence = BlSequenceMethods{
-    SeqItem      : blListSeqItem,
-    SeqAssItem   : blListSeqAssItem,
-    SeqRepeat    : blListSeqRepeat,
+    SeqItem      : blListItem,
+    SeqAssItem   : blListAssItem,
+    SeqRepeat    : blListRepeat,
+    SeqSize      : blListSize,
 }
 var blListMethods = []BlGFunctionObject{
     NewBlGFunction("append",  listAppend,  GFUNC_VARARGS),
@@ -41,7 +42,7 @@ func NewBlList(lsize int) *BlListObject {
     }
 }
 
-func blListSeqItem(obj BlObject, num int) BlObject {
+func blListItem(obj BlObject, num int) BlObject {
     lobj := obj.(*BlListObject)
     if num > lobj.lsize || num < 0 {
         errpkg.SetErrmsg("subscript position out of bounds")
@@ -50,7 +51,7 @@ func blListSeqItem(obj BlObject, num int) BlObject {
     return lobj.list[num]
 }
 
-func blListSeqAssItem(obj, value BlObject, num int) int {
+func blListAssItem(obj, value BlObject, num int) int {
     lobj := obj.(*BlListObject)
     if num > lobj.lsize || num < 0 {
         errpkg.SetErrmsg("subscript position out of bounds")
@@ -60,7 +61,7 @@ func blListSeqAssItem(obj, value BlObject, num int) int {
     return 0
 }
 
-func blListSeqRepeat(a, b BlObject) BlObject {
+func blListRepeat(a, b BlObject) BlObject {
     iobj, ok := b.(*BlIntObject)
     if !ok {
         errpkg.SetErrmsg("cant multiply sequence with" +
@@ -81,6 +82,10 @@ func blListSeqRepeat(a, b BlObject) BlObject {
         copy(ret.list[i:], lobj.list)
     }
     return ret
+}
+
+func blListSize(obj BlObject) int {
+    return obj.(*BlListObject).lsize
 }
 
 func blListRepr(obj BlObject) *BlStringObject {
@@ -136,6 +141,34 @@ func blListCompare(a, b BlObject) int {
 }
 
 /*
+ * The list's constructor takes an object that is
+ * iterable (it contains SeqItem and SeqSize).
+ * Later it will instead dispatch into a subroutine
+ * that takes care of running the 'for' construct.
+ */
+func blListInit(obj *BlTypeObject, args ...BlObject) BlObject {
+    var arg BlObject
+    if blParseArguments("|o", args, &arg) == -1 {
+        return nil
+    }
+    typeobj := arg.BlType()
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SeqItem == nil || seq.SeqSize == nil {
+            goto err
+        }
+        lobj := NewBlList(0)
+        for i := 0; i < seq.SeqSize(arg); i++ {
+            lobj.Append(seq.SeqItem(arg, i))
+        }
+        return lobj
+    }
+err:
+    errpkg.SetErrmsg("'%s' object is not iterable",
+                     typeobj.Name)
+    return nil
+}
+
+/*
  * The beginning of list methods..
  */
 func listAppend(self BlObject, args ...BlObject) BlObject {
@@ -179,9 +212,6 @@ func listInsert(self BlObject, args ...BlObject) BlObject {
 }
 
 func listTrunc(self BlObject, args ...BlObject) BlObject {
-    if blParseArguments("", args) == -1 {
-        return nil
-    }
     lobj := self.(*BlListObject)
     lobj.list  = make([]BlObject, 0)
     lobj.lsize = 0
@@ -189,9 +219,6 @@ func listTrunc(self BlObject, args ...BlObject) BlObject {
 }
 
 func listReverse(self BlObject, args ...BlObject) BlObject {
-    if blParseArguments("", args) == -1 {
-        return nil
-    }
     lobj := self.(*BlListObject)
     list := make([]BlObject, lobj.lsize)
     var j int
@@ -211,6 +238,7 @@ func blInitList() {
         GetMember: blListGetMember,
         EvalCond : blListEvalCond,
         Compare  : blListCompare,
+        Init     : blListInit,
         Sequence : &blListSequence,
         methods  : blListMethods,
     }
