@@ -29,8 +29,8 @@ var blIntNumbers = BlNumberMethods{
     NumMod   : blIntMod,
 }
 var blIntSequence = BlSequenceMethods{
-    SeqItem      : blIntSeqItem,
-    SeqAssItem   : blIntSeqAssItem,
+    SeqItem      : blIntItem,
+    SeqAssItem   : blIntAssItem,
 }
 var BlIntType BlTypeObject
 
@@ -119,7 +119,7 @@ func blIntMod(a, b BlObject) BlObject {
     return NewBlInt(aIobj.Value % bIobj.Value)
 }
 
-func blIntSeqItem(obj BlObject, num int) BlObject {
+func blIntItem(obj BlObject, num int) BlObject {
     iobj := obj.(*BlIntObject)
     if num > 63  || num < 0 {
         errpkg.SetErrmsg("subscript position out of bounds")
@@ -128,7 +128,7 @@ func blIntSeqItem(obj BlObject, num int) BlObject {
     return NewBlInt((iobj.Value >> uint(num)) & 0x01)
 }
 
-func blIntSeqAssItem(obj BlObject, value BlObject,
+func blIntAssItem(obj BlObject, value BlObject,
                      num int) int {
     iobj := obj.(*BlIntObject)
     if num > 63 || num < 0 {
