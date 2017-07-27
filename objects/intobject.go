@@ -184,8 +184,11 @@ func blIntCompare(a, b BlObject) int {
 func blIntInit(obj *BlTypeObject,
                args ...BlObject) BlObject {
     var arg BlObject
-    if blParseArguments("o", args, &arg) == -1 {
+    if blParseArguments("|o", args, &arg) == -1 {
         return nil
+    }
+    if arg == nil {
+        return NewBlInt(0)
     }
     switch t := arg.(type) {
         case *BlIntObject:
