@@ -43,14 +43,15 @@ func (bso *BlSocketObject) BlType() *BlTypeObject {
 }
 
 var blSocketMethods = []BlGFunctionObject{
-    NewBlGFunction("connect", socketConnect,    GFUNC_VARARGS),
-    NewBlGFunction("bind",    socketBind,       GFUNC_VARARGS),
-    NewBlGFunction("listen",  socketListen,     GFUNC_VARARGS),
-    NewBlGFunction("accept",  socketAccept,     GFUNC_NOARGS ),
-    NewBlGFunction("read",    socketRead,       GFUNC_VARARGS),
-    NewBlGFunction("write",   socketWrite,      GFUNC_VARARGS),
-    NewBlGFunction("getaddr", socketGetAddress, GFUNC_NOARGS ),
-    NewBlGFunction("close",   socketClose,      GFUNC_VARARGS),
+    NewBlGFunction("connect",  socketConnect,    GFUNC_VARARGS),
+    NewBlGFunction("bind",     socketBind,       GFUNC_VARARGS),
+    NewBlGFunction("listen",   socketListen,     GFUNC_VARARGS),
+    NewBlGFunction("accept",   socketAccept,     GFUNC_NOARGS ),
+    NewBlGFunction("read",     socketRead,       GFUNC_VARARGS),
+    NewBlGFunction("write",    socketWrite,      GFUNC_VARARGS),
+    NewBlGFunction("writeall", socketWriteAll,   GFUNC_VARARGS),
+    NewBlGFunction("getaddr",  socketGetAddress, GFUNC_NOARGS ),
+    NewBlGFunction("close",    socketClose,      GFUNC_VARARGS),
 }
 var blSocketFields = []BlFields{
     {"AF_INET", T_INT, AF_INET},
@@ -417,6 +418,28 @@ func socketWrite(obj BlObject, args ...BlObject) BlObject {
         return nil
     }
     return NewBlInt(int64(size))
+}
+
+func socketWriteAll(obj BlObject, args ...BlObject) BlObject {
+    var data string
+    if blParseArguments("s", args, &data) == -1 {
+        return nil
+    }
+    self := obj.(*BlSocketObject)
+    dataLen := len(data)
+    var pos int
+    for {
+        siz, err := self.f.WriteString(data[pos:])
+        if err != nil {
+            errpkg.SetErrmsg(err.Error())
+            return nil
+        }
+        pos += siz
+        if pos == dataLen {
+            break
+        }
+    }
+    return NewBlInt(int64(dataLen))
 }
 
 func socketClose(obj BlObject, args ...BlObject) BlObject {
