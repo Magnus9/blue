@@ -180,6 +180,8 @@ func (p *Parser) stmt() *interm.Node {
             return p.ifStmt()
         case token.RETURN:
             return p.returnStmt()
+        case token.IMPORT:
+            return p.importStmt()
         case token.PRINT:
             node := p.createNode(p.current.Str, p.current.TokenType)
             p.nextToken()
@@ -404,6 +406,31 @@ func (p *Parser) returnStmt() *interm.Node {
        tokenType != token.SEMICOLON &&
        tokenType != token.EOF {
         root.Add(p.expr())
+    }
+    return root
+}
+
+func (p *Parser) importStmt() *interm.Node {
+    root := p.createNode(p.current.Str, p.current.TokenType)
+    p.nextToken()
+
+    for {
+        if p.peekCurrent() != token.NAME {
+            p.postError("expected name")
+        }
+        root.Add(p.createNode(p.current.Str,
+                 p.current.TokenType))
+        p.nextToken()
+        /*
+         * Check for a dot '.' token. If we find it
+         * we skip the token and continue the for loop,
+         * otherwise we break the loop.
+         */
+        if p.peekCurrent() == token.DOT {
+            p.nextToken()
+            continue
+        }
+        break
     }
     return root
 }
