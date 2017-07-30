@@ -17,7 +17,7 @@ func (bfo *BlFileObject) BlType() *BlTypeObject {
 }
 var BlFileType BlTypeObject
 
-func newBlFile(f *os.File, mode string) *BlFileObject {
+func NewBlFile(f *os.File, mode string) *BlFileObject {
     return &BlFileObject{
         header: blHeader{&BlFileType},
         f     : f,
@@ -88,7 +88,7 @@ func blFileInit(obj *BlTypeObject,
         errpkg.SetErrmsg(err.Error())
         return nil
     }
-    return newBlFile(f, mode)
+    return NewBlFile(f, mode)
 }
 
 func blFileRead(self BlObject, args ...BlObject) BlObject {
