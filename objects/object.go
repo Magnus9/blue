@@ -111,6 +111,11 @@ func locate(typeobj *BlTypeObject, name string) BlObject {
     return ret
 }
 
+func BlParseArguments(fmts string, args []BlObject,
+                      values ...interface{}) int {
+    return blParseArguments(fmts, args, values...)
+}
+
 /*
  * Used to parse arguments for builtin functions.
  */
@@ -225,7 +230,7 @@ func blParseArguments(fmts string, args []BlObject,
 func blTypeFinish(typeobj *BlTypeObject) {
     m := make(map[string]BlObject)
     if typeobj.methods != nil {
-        blInsertFunctions(typeobj.methods, m)
+        BlInsertFunctions(typeobj.methods, m)
     }
     if typeobj.fields  != nil {
         blInsertFields(typeobj.fields, m)
@@ -237,7 +242,7 @@ func blTypeFinish(typeobj *BlTypeObject) {
  * Insert a function into a map that either belongs
  * to a module object or a type object.
  */
-func blInsertFunctions(funcs []BlGFunctionObject,
+func BlInsertFunctions(funcs []BlGFunctionObject,
                        m map[string]BlObject) {
     for i := 0; i < len(funcs); i++ {
         f := &funcs[i]; m[f.Name] = f       
@@ -361,6 +366,8 @@ func BlInitTypes() {
     blInitGMethod()
     // Initialize the gfunction type.
     blInitGFunction()
+    // Initialize the module type.
+    blInitModule()
     // Initialize the `type' type.
     blInitType()
 }
