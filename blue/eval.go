@@ -39,6 +39,8 @@ func Init(argv []string) {
     blInitBuiltins()
     // Initialize the system module(core).
     blInitSystem(argv)
+    // Initialize the time module.
+    blInitTime()
 }
 
 func GetModuleMap() map[string]*objects.BlModuleObject {
