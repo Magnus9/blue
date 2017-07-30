@@ -15,6 +15,9 @@ const (
     DIVEOUT_BREAK    = 2
     DIVEOUT_NONE     = 3
 )
+// The module map. Holds all loaded modules.
+var modules = make(map[string]*objects.BlModuleObject,
+                   0)
 type Eval struct {
     pathname     string
     root         *interm.Node
@@ -29,11 +32,17 @@ type Eval struct {
 }
 type tracefunction func(frame *objects.BlFrame)
 
-func Init() {
+func Init(argv []string) {
     // Initialize all the type objects.
     objects.BlInitTypes()
-    // Put their type object into the builtin map.
+    // Initialize the builtins module.
     blInitBuiltins()
+    // Initialize the system module(core).
+    blInitSystem(argv)
+}
+
+func GetModuleMap() map[string]*objects.BlModuleObject {
+    return modules
 }
 
 func New(pathname string, root *interm.Node,
@@ -157,6 +166,14 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             fallthrough
         case token.BLOCK:
             e.block(node)
+        case token.IMPORT:
+            for _, n := range node.Children {
+                name, ret := blImportModule(n)
+                if ret == nil {
+                    goto err
+                }
+                e.globals[name] = ret
+            }
         case token.MAKE_CLASS:
             name := node.Children[0].Str
             obj := e.makeClass(name, node.Children[1],
