@@ -19,6 +19,9 @@ func (blo *BlListObject) Append(obj BlObject) {
     blo.list = append(blo.list, obj)
     blo.lsize++
 }
+func (blo *BlListObject) GetList() []BlObject {
+    return blo.list
+}
 var blListSequence = BlSequenceMethods{
     SeqItem      : blListItem,
     SeqAssItem   : blListAssItem,
