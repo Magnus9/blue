@@ -1,0 +1,12 @@
+
+===
+    A module test point.
+===
+import system
+i = 0
+while i < len(system.argv) do
+    if system.argv[i] == "10" do
+        print("We got a 10!")
+    end
+    i += 1
+end
