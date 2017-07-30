@@ -49,7 +49,7 @@ func blInstanceGetMember(obj BlObject,
             t.Self = iobj
             return t
     }
-    return nil
+    return ret
 }
 
 func blInstanceSetMember(obj BlObject, name string,
