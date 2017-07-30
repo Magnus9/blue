@@ -181,7 +181,14 @@ func (p *Parser) stmt() *interm.Node {
         case token.RETURN:
             return p.returnStmt()
         case token.IMPORT:
-            return p.importStmt()
+            node := p.createNode(p.current.Str, p.current.TokenType)
+            for {
+                node.Add(p.importPath())
+                if p.peekCurrent() != token.COMMA {
+                    break
+                }
+            }
+            return node
         case token.PRINT:
             node := p.createNode(p.current.Str, p.current.TokenType)
             p.nextToken()
@@ -410,8 +417,8 @@ func (p *Parser) returnStmt() *interm.Node {
     return root
 }
 
-func (p *Parser) importStmt() *interm.Node {
-    root := p.createNode(p.current.Str, p.current.TokenType)
+func (p *Parser) importPath() *interm.Node {
+    root := p.createNode("PATH", token.PATH)
     p.nextToken()
 
     for {
