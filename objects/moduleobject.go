@@ -2,12 +2,17 @@
 package objects
 
 import (
+    "fmt"
     "github.com/Magnus9/blue/errpkg"
 )
 
 type BlModuleObject struct {
     header blHeader
+    // The module name
     name   string
+    // The full path of the module (file).
+    Path   string
+    // Map filled with symbols.
     Locals map[string]BlObject
 }
 func (bmo *BlModuleObject) BlType() *BlTypeObject {
@@ -15,18 +20,19 @@ func (bmo *BlModuleObject) BlType() *BlTypeObject {
 }
 var BlModuleType BlTypeObject
 
-func NewBlModule(name string) *BlModuleObject {
+func NewBlModule(name, path string) *BlModuleObject {
     return &BlModuleObject{
         header: blHeader{&BlModuleType},
         name  : name,
+        Path  : path,
         Locals: make(map[string]BlObject, 0),
     }
 }
 
 func blModuleRepr(obj BlObject) *BlStringObject {
     mobj := obj.(*BlModuleObject)
-    return NewBlString("<module '" + mobj.name + 
-                       "'>")
+    return NewBlString(fmt.Sprintf("<module '%s', path='%s'>",
+                       mobj.name, mobj.Path))
 }
 
 func blModuleGetMember(obj BlObject, name string) BlObject {
