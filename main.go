@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-    blue.Init()
+    blue.Init(os.Args[1:])
     globals := make(map[string]objects.BlObject, 0)
     
     if len(os.Args) > 1 {
