@@ -51,6 +51,7 @@ var blSocketMethods = []BlGFunctionObject{
     NewBlGFunction("write",    socketWrite,      GFUNC_VARARGS),
     NewBlGFunction("writeall", socketWriteAll,   GFUNC_VARARGS),
     NewBlGFunction("getaddr",  socketGetAddress, GFUNC_NOARGS ),
+    NewBlGFunction("filenum",  socketFilenum,    GFUNC_NOARGS ),
     NewBlGFunction("close",    socketClose,      GFUNC_VARARGS),
 }
 var blSocketFields = []BlFields{
@@ -350,40 +351,6 @@ func socketAccept(obj BlObject, args ...BlObject) BlObject {
                        saddr)
 }
 
-/*
- * Get the socketaddr attached to a file-desc. For
- * a AF_UNIX socket it returns a string. For AF_INET
- * and AF_INET6 sockets it returns an [addr, port] pair.
- */
-func socketGetAddress(obj BlObject, args ...BlObject) BlObject {
-    self := obj.(*BlSocketObject)
-    switch self.domain {
-        case AF_UNIX:
-            saddr := self.saddr.(*syscall.SockaddrUnix)
-            return NewBlString(saddr.Name)
-        case AF_INET:
-            lobj := NewBlList(2)
-            saddr := self.saddr.(*syscall.SockaddrInet4)
-            lobj.list[0] = NewBlString(
-                net.IP(saddr.Addr[:]).String())
-            lobj.list[1] = NewBlInt(int64(saddr.Port))
-            return lobj
-        case AF_INET6:
-            lobj := NewBlList(2)
-            saddr := self.saddr.(*syscall.SockaddrInet6)
-            lobj.list[0] = NewBlString(
-                net.IP(saddr.Addr[:]).String())
-            lobj.list[1] = NewBlInt(int64(saddr.Port))
-            return lobj
-    }
-    /*
-     * Never reaches this state (hence the no default case)
-     * above. Domains are checked by the initialization
-     * routine and declines domains not supported.
-     */
-    return BlNil
-}
-
 func socketRead(obj BlObject, args ...BlObject) BlObject {
     var size int64
     if blParseArguments("i", args, &size) == -1 {
@@ -440,6 +407,45 @@ func socketWriteAll(obj BlObject, args ...BlObject) BlObject {
         }
     }
     return NewBlInt(int64(dataLen))
+}
+
+/*
+ * Get the socketaddr attached to a file-desc. For
+ * a AF_UNIX socket it returns a string. For AF_INET
+ * and AF_INET6 sockets it returns an [addr, port] pair.
+ */
+func socketGetAddress(obj BlObject, args ...BlObject) BlObject {
+    self := obj.(*BlSocketObject)
+    switch self.domain {
+        case AF_UNIX:
+            saddr := self.saddr.(*syscall.SockaddrUnix)
+            return NewBlString(saddr.Name)
+        case AF_INET:
+            lobj := NewBlList(2)
+            saddr := self.saddr.(*syscall.SockaddrInet4)
+            lobj.list[0] = NewBlString(
+                net.IP(saddr.Addr[:]).String())
+            lobj.list[1] = NewBlInt(int64(saddr.Port))
+            return lobj
+        case AF_INET6:
+            lobj := NewBlList(2)
+            saddr := self.saddr.(*syscall.SockaddrInet6)
+            lobj.list[0] = NewBlString(
+                net.IP(saddr.Addr[:]).String())
+            lobj.list[1] = NewBlInt(int64(saddr.Port))
+            return lobj
+    }
+    /*
+     * Never reaches this state (hence the no default case)
+     * above. Domains are checked by the initialization
+     * routine and declines domains not supported.
+     */
+    return BlNil
+}
+
+func socketFilenum(obj BlObject, args ...BlObject) BlObject {
+    fd := obj.(*BlSocketObject).fd
+    return NewBlInt(int64(fd))
 }
 
 func socketClose(obj BlObject, args ...BlObject) BlObject {
