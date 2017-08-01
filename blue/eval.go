@@ -21,10 +21,9 @@ var modules = make(map[string]*objects.BlModuleObject,
 type Eval struct {
     pathname     string
     root         *interm.Node
-    globals      map[string]objects.BlObject
     builtins     map[string]objects.BlObject
     frame        *objects.BlFrame
-    tracefunc    func(frame *objects.BlFrame)
+    tracefunc    tracefunction
     diveout      objects.BlDiveout
     cobj         objects.BlObject
     inFunction   bool
@@ -47,12 +46,10 @@ func GetModuleMap() map[string]*objects.BlModuleObject {
     return modules
 }
 
-func New(pathname string, root *interm.Node,
-         globals map[string]objects.BlObject) *Eval {
+func New(pathname string, root *interm.Node) *Eval {
     eval := &Eval{
         pathname : pathname,
         root     : root,
-        globals  : globals,
         builtins : builtins,
         tracefunc: genericTraceFunc,
     }
@@ -63,15 +60,15 @@ func New(pathname string, root *interm.Node,
  * Run an interpretation on this evaluation context.
  * An evaluation context equals a compiled file.
  */
-func (e *Eval) Run() {
-    e.evalCode(e.root, nil)
+func (e *Eval) Run(globals map[string]objects.BlObject) {
+    e.evalCode(e.root, globals, nil)
 }
 
 func (e *Eval) evalCode(
 node *interm.Node,
-locals map[string]objects.BlObject) {
-    e.frame = objects.NewBlFrame(e.frame, locals,
-                                 e.pathname)
+globals, locals map[string]objects.BlObject) {
+    e.frame = objects.NewBlFrame(e.frame, globals,
+                                 locals, e.pathname)
     e.exec(node)
     e.frame = e.frame.Prev
 }
@@ -174,7 +171,7 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
                 if ret == nil {
                     goto err
                 }
-                e.globals[name] = ret
+                e.frame.Globals[name] = ret
             }
         case token.MAKE_CLASS:
             name := node.Children[0].Str
@@ -541,7 +538,7 @@ func (e *Eval) get(name string) objects.BlObject {
         }
     }
     if obj == nil {
-        obj = e.globals[name]
+        obj = e.frame.Globals[name]
         if obj == nil {
             obj = e.builtins[name]
         }
@@ -560,7 +557,7 @@ func (e *Eval) set(name string, v objects.BlObject) int {
     if e.frame.Locals != nil {
         e.frame.Locals[name] = v
     } else {
-        e.globals[name] = v
+        e.frame.Globals[name] = v
     }
     return 0
 }
@@ -592,7 +589,7 @@ paramsNode, block *interm.Node) objects.BlObject {
     if (paramsNode.Flags & interm.FLAG_STARPARAM) != 0 {
         starParam = true
     } 
-    return objects.NewBlFunction(name, params,
+    return objects.NewBlFunction(name, e.frame.Globals, params,
                                  paramsNode.Nchildren,
                                  block, starParam) 
 }
@@ -751,7 +748,7 @@ locals map[string]objects.BlObject) (obj objects.BlObject) {
         }
     }()
     e.inFunction = true
-    e.evalCode(f.Block, locals)
+    e.evalCode(f.Block, f.Globals, locals)
     e.inFunction = false
     e.loopCount = 0
     return obj
