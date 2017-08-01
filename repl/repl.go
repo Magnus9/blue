@@ -117,8 +117,8 @@ func Run(globals map[string]objects.BlObject) {
             break
         }
         ast := parser.ParseFromRepl("repl", program)
-        runtime := blue.New("repl", ast, globals)
-        runtime.Run()
+        runtime := blue.New("repl", ast)
+        runtime.Run(globals)
     }
 }
 

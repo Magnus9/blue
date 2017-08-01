@@ -28,8 +28,8 @@ func main() {
             }
         }()
         ast := parser.ParseFromFile(pathname, f)
-        runtime := blue.New(pathname, ast, globals)
-        runtime.Run()
+        runtime := blue.New(pathname, ast)
+        runtime.Run(globals)
     } else {
         repl.Init()
         repl.Run(globals)
