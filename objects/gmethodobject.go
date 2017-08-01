@@ -27,29 +27,15 @@ func newBlGMethod(class BlObject, self BlObject,
 
 func blGMethodRepr(obj BlObject) *BlStringObject {
     mobj := obj.(*BlGMethodObject)
-    
-    params := mobj.F.Params
-    if mobj.Self == nil {
-        params++   
-    }
     typeobj := mobj.Class.(*BlTypeObject)
-    str := fmt.Sprintf("<builtin-method '%s.%s', params=%d>",
-                       typeobj.Name, mobj.F.Name,
-                       params)
+    str := fmt.Sprintf("<builtin-method '%s.%s'>",
+                       typeobj.Name, mobj.F.Name)
     return NewBlString(str)
 }
 
 func blGMethodEvalCond(obj BlObject) bool {
     mobj := obj.(*BlGMethodObject)
-
-    params := mobj.F.Params
-    if mobj.Self != nil {
-        params++
-    }
-    if params > 0 {
-        return true
-    }
-    return false
+    return mobj.F.BlType().EvalCond(mobj.F)
 }
 
 func blInitGMethod() {
