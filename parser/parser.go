@@ -383,7 +383,7 @@ func (p *Parser) ifStmt() *interm.Node {
     p.nextToken()
 
     root.Add(p.expr())
-    p.matchToken(token.DO, "expected 'do' to open block")
+    p.matchToken(token.THEN, "expected 'then' to open block")
 
     root.Add(p.stmtBlock())
     for p.peekCurrent() == token.ELIF {
@@ -392,7 +392,9 @@ func (p *Parser) ifStmt() *interm.Node {
         root.Add(elifNode)
         p.nextToken()
         root.Add(p.expr())
-        p.matchToken(token.DO, "expected 'do' to open block")
+        if p.peekCurrent() == token.THEN {
+            p.nextToken()
+        }
         root.Add(p.stmtBlock())
     }
     if p.peekCurrent() == token.ELSE {
