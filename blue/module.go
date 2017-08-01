@@ -122,8 +122,8 @@ func blExecModule(mod *objects.BlModuleObject,
      * Spawn a new instance of the VM passing in
      * mod.Locals as globals.
      */
-    runtime := New(mod.Path, ast, mod.Locals)
-    runtime.Run()
+    runtime := New(mod.Path, ast)
+    runtime.Run(mod.Locals)
     // If the evaluation succeeded mod.Locals is filled.
     return mod
 }
