@@ -22,7 +22,6 @@ type BlGFunctionObject struct {
     Name     string
     Function gfunction
     Flags    int
-    Params   int
 }
 func (bgfo *BlGFunctionObject) BlType() *BlTypeObject {
     return bgfo.header.typeobj
