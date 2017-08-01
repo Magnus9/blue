@@ -8,7 +8,7 @@ const (
 
     // RESERVED WORDS
     DEF; IF; ELIF; ELSE; DO; END; FOR; WHILE
-    SWITCH; CASE; DEFAULT; IN; RETURN
+    SWITCH; CASE; DEFAULT; IN; RETURN; THEN
     PRINT; CONTINUE; BREAK; IMPORT; FROM; CLASS;
     EXTENDS; NEW
 
@@ -55,6 +55,7 @@ var RES_WORDS = map[string]int{
     "elif"    : ELIF,
     "else"    : ELSE,
     "do"      : DO,
+    "then"    : THEN,
     "end"     : END,
     "for"     : FOR,
     "while"   : WHILE,
