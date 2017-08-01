@@ -8,6 +8,7 @@ import (
 type BlFunctionObject struct {
     header    blHeader
     name      string
+    Globals   map[string]BlObject
     Params    []string
     ParamLen  int
     StarParam bool
@@ -18,12 +19,13 @@ func (bfo *BlFunctionObject) BlType() *BlTypeObject {
 }
 var BlFunctionType BlTypeObject
 
-func NewBlFunction(name string, params []string,
-                   paramLen int, block *interm.Node,
-                   starParam bool) BlObject {
+func NewBlFunction(name string, globals map[string]BlObject,
+                   params []string, paramLen int,
+                   block *interm.Node, starParam bool) BlObject {
     bfo := &BlFunctionObject{
         header   : blHeader{&BlFunctionType},
         name     : name,
+        Globals  : globals,
         Params   : params,
         ParamLen : paramLen,
         StarParam: starParam,
@@ -41,9 +43,9 @@ func NewBlFunction(name string, params []string,
 
 func blFunctionRepr(obj BlObject) *BlStringObject {
     fobj := obj.(*BlFunctionObject)
-    str := fmt.Sprintf("<function '%s', params=%d>\n",
-                       fobj.name, fobj.ParamLen)
-    return NewBlString(str)
+    mesg := fmt.Sprintf("<function '%s', params=%d>",
+                        fobj.name, fobj.ParamLen)
+    return NewBlString(mesg)
 }
 
 func blFunctionEvalCond(obj BlObject) bool {
