@@ -1,0 +1,66 @@
+
+def is_option(str)
+    return str[0] == '-' && len(str) > 1
+end
+
+===
+    @argc   => len of argv.
+    @argv   => arguments.
+    @opts   => option string.
+    @return => [ [ []* ], [] ].
+===
+def getopt(argc, argv, opts)
+    # The flag-argument list
+    pairs = []
+    # The trailing argument list
+    trailing = []
+
+    opts_len = len(opts)
+    i = 0
+    while i < argc, i += 1 do
+        if !is_option(argv[i]) then
+            trailing.append(argv[i])
+            continue
+        end
+        optstr = argv[i][1..]
+        optlen = len(optstr)
+        optpos = 0
+        ===
+            opt might still be composed of more
+            than one option, i.e, -faa, so we need
+            to iterate it aswell, feelsbadman.
+        ===
+        while optpos < optlen, optpos += 1 do
+            opt = optstr[optpos]
+            j = 0
+            while j < opts_len do
+                j += 1
+                if opt != opts[j - 1] then
+                    continue
+                end
+                arg = ""
+                if j < opts_len && opts[j] == ":" then
+                    # Required argument
+                    if optpos + 1 < optlen then
+                        # Use the remainder of the optstr
+                        arg = optstr[optpos + 1..]
+                        optpos = optlen
+                    elif i + 1 < argc
+                        # Use argv[i + 1]
+                        i += 1
+                        arg = argv[i]
+                    else
+                        err("option requires an argument -- '-" + opt + \
+                            "'")
+                    end
+                end
+                pairs.append(["-" + opt, arg])
+                break
+            end
+            if j == opts_len then
+                err("invalid option -- '-" + opt + "'")
+            end
+        end
+    end
+    return [pairs, trailing]
+end
