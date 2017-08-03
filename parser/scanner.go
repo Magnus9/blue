@@ -62,8 +62,16 @@ func (s *Scanner) makeToken(str string,
 
 func (s *Scanner) readLine() {
     s.lineBuf.Reset()
-    for i := s.sourcePos + 1; i < len(s.sourceProgram);
+    var i int
+    // First for loop removes leading whitespace.
+    for i = s.sourcePos + 1; i < len(s.sourceProgram);
         i++ {
+        ch := s.sourceProgram[i]
+        if ch != ' ' && ch != '\t' {
+            break
+        }
+    }
+    for ; i < len(s.sourceProgram); i++ {
         ch := s.sourceProgram[i]
         if ch == '\n' {
             break
@@ -282,7 +290,7 @@ func (s *Scanner) isxDigit(ch byte) bool {
 func (s *Scanner) parseWord() token.Token {
     ch := s.peekChar(1)
     if (s.charPointer == 'R' || s.charPointer == 'r') &&
-        (ch == '"' || ch == '\\') {
+        (ch == '"' || ch == '\'') {
         return s.parseString()
     }
     pos := s.sourcePos
