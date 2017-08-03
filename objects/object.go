@@ -61,6 +61,7 @@ type BlSequenceMethods struct {
     SeqAssItem    func(BlObject, BlObject, int) int
     SeqConcat     func(BlObject, BlObject) BlObject
     SeqRepeat     func(BlObject, BlObject) BlObject
+    SeqSlice      func(BlObject, int, int) BlObject
     SeqSize       func(BlObject) int
 }
 /*
