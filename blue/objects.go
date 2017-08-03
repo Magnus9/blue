@@ -75,6 +75,18 @@ func blSetSeqItem(obj, value, key objects.BlObject) int {
     return seq.SeqAssItem(obj, value, int(iobj.Value))
 }
 
+func blGetSlice(obj objects.BlObject, s, e int) objects.BlObject {
+    typeobj := obj.BlType()
+    if typeobj.Sequence != nil {
+        if fn := typeobj.Sequence.SeqSlice; fn != nil {
+            return fn(obj, s, e)
+        }
+    }
+    errpkg.SetErrmsg("'%s' object is not subscriptable",
+                     typeobj.Name)
+    return nil
+}
+
 func blNumNegate(obj objects.BlObject) objects.BlObject {
     typeobj := obj.BlType()
     if typeobj.Numbers != nil {
@@ -307,6 +319,18 @@ func blCmp(a, b objects.BlObject, op int) objects.BlObject {
         return objects.BlTrue
     }
     return objects.BlFalse
+}
+
+/*
+ * Objects that dont have an EvalCond function
+ * returns true as default.
+ */
+func blEvalCondition(obj objects.BlObject) bool {
+    fn := obj.BlType().EvalCond
+    if fn == nil {
+        return true
+    }
+    return fn(obj)
 }
 
 func blPrint(obj objects.BlObject) int {
