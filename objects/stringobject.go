@@ -21,6 +21,7 @@ var blStringSequence = BlSequenceMethods{
     SeqItem  : blStringItem,
     SeqConcat: blStringConcat,
     SeqRepeat: blStringRepeat,
+    SeqSlice : blStringSlice,
     SeqSize  : blStringSize,
 }
 var blStringMethods = []BlGFunctionObject {
@@ -88,6 +89,25 @@ func blStringRepeat(a, b BlObject) BlObject {
         buf.WriteString(sobj.Value)
     }
     return NewBlString(buf.String())
+}
+
+func blStringSlice(obj BlObject, s, e int) BlObject {
+    sobj := obj.(*BlStringObject)
+    if s < 0 {
+        s = 0
+    } else if s > sobj.vsize {
+        s = sobj.vsize
+    }
+    if e > sobj.vsize {
+        e = sobj.vsize
+    }
+    if s == 0 && e > sobj.vsize {
+        return obj
+    }
+    if e < s {
+        e = s
+    }
+    return NewBlString(sobj.Value[s:e])
 }
 
 func blStringSize(obj BlObject) int {

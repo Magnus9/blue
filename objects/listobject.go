@@ -26,6 +26,7 @@ var blListSequence = BlSequenceMethods{
     SeqItem      : blListItem,
     SeqAssItem   : blListAssItem,
     SeqRepeat    : blListRepeat,
+    SeqSlice     : blListSlice,
     SeqSize      : blListSize,
 }
 var blListMethods = []BlGFunctionObject{
@@ -85,6 +86,25 @@ func blListRepeat(a, b BlObject) BlObject {
         copy(ret.list[i:], lobj.list)
     }
     return ret
+}
+
+func blListSlice(obj BlObject, s, e int) BlObject {
+    lobj := obj.(*BlListObject)
+    if s < 0 {
+        s = 0
+    } else if s > lobj.lsize {
+        s = lobj.lsize
+    }
+    if e < s {
+        e = s
+    } else if e > lobj.lsize {
+        e = lobj.lsize
+    }
+    list := NewBlList(0)
+    for i := s; i < e; i++ {
+        list.Append(lobj.list[i - s])
+    }
+    return list
 }
 
 func blListSize(obj BlObject) int {
