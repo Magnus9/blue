@@ -4,8 +4,12 @@ package interm
 import (
     "bytes"
 )
-const FLAG_STARPARAM = 1 << 0
 
+const (
+    FLAG_STARPARAM = 1 << 0
+    FLAG_RANGELHS  = 1 << 0
+    FLAG_RANGERHS  = 1 << 1
+)
 type Node struct {
     Str       string
     Line      string
