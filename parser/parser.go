@@ -189,12 +189,6 @@ func (p *Parser) stmt() *interm.Node {
                 }
             }
             return node
-        case token.PRINT:
-            node := p.createNode(p.current.Str, p.current.TokenType)
-            p.nextToken()
-            node.Add(p.expr())
-
-            return node
         default:
             return p.exprStmt()
     }
@@ -338,14 +332,28 @@ func (p *Parser) stmtBlock() *interm.Node {
     return root
 }
 
+/*
+ * This is now augmented to take an arbitrary
+ * amount of expressions to evaluate on runtime
+ * during execution of each iteration.
+ */
 func (p *Parser) controlStmt() *interm.Node {
     root := p.createNode(p.current.Str, p.current.TokenType)
     p.nextToken()
 
     root.Add(p.expr())
+    for p.peekCurrent() == token.COMMA {
+        p.nextToken()
+        /*
+         * assignments and augmented assignments
+         * are considered expressions here. They
+         * might become expressions globally later.
+         */
+        root.Add(p.exprStmt())
+    }
     p.matchToken(token.DO, "expected 'do' to open block")
-
     root.Add(p.stmtBlock())
+    
     p.matchToken(token.END, "expected 'end' to close block")
 
     return root
@@ -531,13 +539,30 @@ func (p *Parser) expr() *interm.Node {
 }
 
 func (p *Parser) rangeExpr() *interm.Node {
-    root := p.orExpr()
-    for p.peekCurrent() == token.DOTDOT {
+    var root *interm.Node
+    if p.peekCurrent() != token.DOTDOT {
+        root = p.orExpr()
+    }
+    if p.peekCurrent() == token.DOTDOT {
         opNode := p.createNode(p.current.Str, token.RANGE)
-        root = root.GiveRootTo(opNode)
-
+        if root == nil {
+            root = opNode
+        } else {
+            root = root.GiveRootTo(opNode)
+            root.Flags |= interm.FLAG_RANGELHS
+        }
         p.nextToken()
-        root.Add(p.orExpr())
+        tokenType := p.peekCurrent()
+        /*
+         * This is a quick fix only, code will be swapped
+         * once the range construct can be used other places
+         * than a literal, i.e (x..x), or subscript [x..x].
+         */
+        if tokenType != token.EOF && tokenType != token.SEMICOLON &&
+           tokenType != token.RBRACK {
+            root.Add(p.orExpr())
+            root.Flags |= interm.FLAG_RANGERHS
+        }
     }
     return root
 }
@@ -773,6 +798,10 @@ func (p *Parser) atom() *interm.Node {
         p.matchToken(token.RPAREN, "expected ')' to close group")
     } else if tokenType == token.NEW {
         node = p.newStmt()
+    } else if tokenType == token.PRINT {
+        node = p.createNode(p.current.Str, p.current.TokenType)
+        p.nextToken()
+        node.Add(p.expr())
     } else {
         p.postError("expected expression")
     }
@@ -843,10 +872,13 @@ func (p *Parser) subscript(node *interm.Node) *interm.Node {
     root = node.GiveRootTo(root)
 
     p.nextAndSkipNL()
-    root.Add(p.expr())
+    n := p.expr()
+    if n.NodeType == token.RANGE {
+        root.NodeType = token.SLICE
+    }
+    root.Add(n)
     p.skipNL()
     p.matchToken(token.RBRACK, "expected ']' to close subscript")
-
     return root
 }
 
