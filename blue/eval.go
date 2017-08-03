@@ -26,7 +26,7 @@ type Eval struct {
     tracefunc    tracefunction
     diveout      objects.BlDiveout
     cobj         objects.BlObject
-    inFunction   bool
+    inFunction   int
     loopCount    int
 }
 type tracefunction func(frame *objects.BlFrame)
@@ -195,7 +195,7 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
         case token.WHILE:
             e.whileStmt(node)
         case token.RETURN:
-            if !e.inFunction {
+            if e.inFunction == 0 {
                 errpkg.SetErrmsg("return outside function")
                 goto err
             }
@@ -254,7 +254,7 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
              * as a wrapper since its an unary operator?.
              */
             obj := e.exec(node.Children[0])
-            ret := obj.BlType().EvalCond(obj)
+            ret := blEvalCondition(obj)
             if ret {
                 return objects.BlFalse
             }
@@ -468,6 +468,14 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
                 goto err
             }
             return ret
+        case token.SLICE:
+            obj := e.exec(node.Children[0])
+            key := e.exec(node.Children[1]).(*objects.BlRangeObject)
+            ret := blGetSlice(obj, key.S, key.E)
+            if ret == nil {
+                goto err
+            }
+            return ret
         case token.LIST:
             list := objects.NewBlList(0)
             for _, elem := range node.Children {
@@ -475,23 +483,33 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             }
             return list
         case token.RANGE:
-            a := e.exec(node.Children[0])
-            b := e.exec(node.Children[1])
-            var aIobj, bIobj *objects.BlIntObject
-            aIobj, ok := a.(*objects.BlIntObject)
-            if !ok {
-                goto fail
+            var s, end int = 0, 4294967295
+            if (node.Flags & interm.FLAG_RANGELHS) != 0 {
+                v := e.exec(node.Children[0])
+                iobj, ok := v.(*objects.BlIntObject)
+                if !ok {
+                    goto out
+                }
+                s = int(iobj.Value)
             }
-            bIobj, ok = b.(*objects.BlIntObject)
-            if !ok {
-                goto fail
+            if (node.Flags & interm.FLAG_RANGERHS) != 0 {
+                var v objects.BlObject
+                if node.Nchildren == 2 {
+                    v = e.exec(node.Children[1])
+                } else {
+                    v = e.exec(node.Children[0])
+                }
+                iobj, ok := v.(*objects.BlIntObject)
+                if !ok {
+                    goto out
+                }
+                end = int(iobj.Value)
             }
-            return objects.NewBlRange(aIobj.Value,
-                                      bIobj.Value)
-fail:
-            errpkg.SetErrmsg("types of the range construct" +
-                             " must be integers")
-            goto err
+            return objects.NewBlRange(s, end)
+            out:
+                errpkg.SetErrmsg("range indices must be" +
+                                 " integers")
+                goto err
         case token.STRING:
             value := parseString(node.Str)
             if value == nil {
@@ -598,7 +616,7 @@ func (e *Eval) ifStmt(node *interm.Node) {
     var i int
     for i = 0; i < node.Nchildren; i += 3 {
         cond := e.exec(node.Children[i])
-        if cond.BlType().EvalCond(cond) {
+        if blEvalCondition(cond) {
             e.exec(node.Children[i + 1])
             return
         }
@@ -608,16 +626,31 @@ func (e *Eval) ifStmt(node *interm.Node) {
     }
 }
 
+/*
+ * Might be a good idea to scale this function
+ * out into two, where one takes care of handling
+ * expressions to evaluate on each iteration, and
+ * the other one without, to boost speed. Allthough
+ * on a tree walker i guess the speed boost is not
+ * really needed.
+ */
 func (e *Eval) whileStmt(node *interm.Node) {
-    block := node.Children[1]
+    block := node.Children[node.Nchildren - 1]
+    evalExpressions := false
     e.loopCount++
-outer:
+    outer:
     for true {
+        if evalExpressions {
+            for i := 1; i < node.Nchildren - 1; i++ {
+                e.exec(node.Children[i])
+            }
+        }
+        evalExpressions = true
         cond := e.exec(node.Children[0])
-        if !cond.BlType().EvalCond(cond) {
+        if !blEvalCondition(cond) {
             break
         }
-inner:
+        inner:
         for _, stmt := range block.Children {
             e.exec(stmt)
             switch {
@@ -743,14 +776,18 @@ locals map[string]objects.BlObject) (obj objects.BlObject) {
                     }
             }
             e.frame = e.frame.Prev
-            e.inFunction = false
-            e.loopCount = 0
+            e.inFunction--
+            if e.inFunction == 0 {
+                e.loopCount = 0
+            }
         }
     }()
-    e.inFunction = true
+    e.inFunction++
     e.evalCode(f.Block, f.Globals, locals)
-    e.inFunction = false
-    e.loopCount = 0
+    e.inFunction--
+    if e.inFunction == 0 {
+        e.loopCount = 0
+    }
     return obj
 }
 
