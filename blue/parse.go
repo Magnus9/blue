@@ -69,7 +69,7 @@ func parseString(value string) *string {
         return new(string)
     }
     if value[0] == 'R' || value[0] == 'r' {
-        slice := value[1:size - 1]
+        slice := value[2:size - 1]
         return &slice
     }
     var buf bytes.Buffer
@@ -114,6 +114,9 @@ func parseString(value string) *string {
                             return nil
                     }
                     buf.WriteByte(sum)
+                default:
+                    buf.WriteByte('\\')
+                    buf.WriteByte(value[spos])
             }
         } else {
             buf.WriteByte(value[spos])
