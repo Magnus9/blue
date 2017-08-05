@@ -32,59 +32,97 @@ func blSetMember(obj, value objects.BlObject,
 
 func blGetSeqItem(obj objects.BlObject,
                   key objects.BlObject) objects.BlObject {
-    tobj := obj.BlType()
-    if tobj.Sequence == nil {
-        errpkg.SetErrmsg("'%s' object is not subscriptable",
-                         tobj.Name)
-        return nil
-    }
-    seq := tobj.Sequence
-    if seq.SeqItem == nil {
-        errpkg.SetErrmsg("'%s' object has no subscript getter",
-                         tobj.Name)
-        return nil
-    }
-    iobj, ok := key.(*objects.BlIntObject)
-    if !ok {
-        errpkg.SetErrmsg("'%s' indices must be integers",
-                         tobj.Name)
-        return nil
-    }
-    return seq.SeqItem(obj, int(iobj.Value))
-}
-
-func blSetSeqItem(obj, value, key objects.BlObject) int {
-    tobj := obj.BlType()
-    if tobj.Sequence == nil {
-        errpkg.SetErrmsg("'%s' object is not subscriptable",
-                         tobj.Name)
-        return -1
-    }
-    seq := tobj.Sequence
-    if seq.SeqAssItem == nil {
-        errpkg.SetErrmsg("'%s' object has no subscript setter",
-                         tobj.Name)
-        return -1
-    }
-    iobj, ok := key.(*objects.BlIntObject)
-    if !ok {
-        errpkg.SetErrmsg("'%s' indices must be integers",
-                         tobj.Name)
-        return -1
-    }
-    return seq.SeqAssItem(obj, value, int(iobj.Value))
-}
-
-func blGetSlice(obj objects.BlObject, s, e int) objects.BlObject {
     typeobj := obj.BlType()
-    if typeobj.Sequence != nil {
-        if fn := typeobj.Sequence.SeqSlice; fn != nil {
-            return fn(obj, s, e)
+    /*
+     * Start by validating that key is type
+     * integer.
+     */
+    iobj, ok := key.(*objects.BlIntObject)
+    if !ok {
+        errpkg.SetErrmsg("'%s' indices must be integers",
+                         typeobj.Name)
+        return nil
+    }
+    siz := int(iobj.Value)
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SqItem != nil {
+            if siz < 0 && seq.SqSize != nil {
+                siz += seq.SqSize(obj)
+            }
+            return seq.SqItem(obj, siz)
         }
     }
     errpkg.SetErrmsg("'%s' object is not subscriptable",
                      typeobj.Name)
     return nil
+}
+
+func blSetSeqItem(obj, value, key objects.BlObject) int {
+    typeobj := obj.BlType()
+    /*
+     * Start by validating that key is type
+     * integer.
+     */
+    iobj, ok := key.(*objects.BlIntObject)
+    if !ok {
+        errpkg.SetErrmsg("'%s' indices must be integers",
+                         typeobj.Name)
+        return -1
+    }
+    siz := int(iobj.Value)
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SqAssItem != nil {
+            if siz < 0 && seq.SqSize != nil {
+                siz += seq.SqSize(obj)
+            }
+            return seq.SqAssItem(obj, value, siz)
+        }
+    }
+    errpkg.SetErrmsg("'%s' object does not support item" +
+                     " assignment", typeobj.Name)
+    return -1
+}
+
+func blGetSlice(obj objects.BlObject, s, e int) objects.BlObject {
+    typeobj := obj.BlType()
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SqSlice != nil {
+            if s < 0 || e < 0 && seq.SqSize != nil {
+                siz := seq.SqSize(obj)
+                if s < 0 {
+                    s += siz
+                }
+                if e < 0 {
+                    e += siz
+                }
+            }
+            return seq.SqSlice(obj, s, e)
+        }
+    }
+    errpkg.SetErrmsg("'%s' object is not slicable",
+                     typeobj.Name)
+    return nil
+}
+
+func blSetSlice(obj, value objects.BlObject, s, e int) int {
+    typeobj := obj.BlType()
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SqAssSlice != nil {
+            if s < 0 || e < 0 && seq.SqSize != nil {
+                siz := seq.SqSize(obj)
+                if s < 0 {
+                    s += siz
+                }
+                if e < 0 {
+                    e += siz
+                }
+            }
+            return seq.SqAssSlice(obj, value, s, e)
+        }
+    }
+    errpkg.SetErrmsg("'%s' object does not support slice" +
+                     " assignment", typeobj.Name)
+    return -1
 }
 
 func blNumNegate(obj objects.BlObject) objects.BlObject {
@@ -202,7 +240,7 @@ err:
 func blNumAddition(a, b objects.BlObject, op string) objects.BlObject {
     typeobj := a.BlType()
     if typeobj.Sequence != nil {
-        if fn := typeobj.Sequence.SeqConcat; fn != nil {
+        if fn := typeobj.Sequence.SqConcat; fn != nil {
             return fn(a, b)
         }
     }
@@ -244,7 +282,7 @@ err:
 func blNumMultiply(a, b objects.BlObject, op string) objects.BlObject {
     typeobj := a.BlType()
     if typeobj.Sequence != nil {
-        if fn := typeobj.Sequence.SeqRepeat; fn != nil {
+        if fn := typeobj.Sequence.SqRepeat; fn != nil {
             return fn(a, b)
         }
     }
