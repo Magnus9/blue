@@ -61,14 +61,17 @@ func New(pathname string, root *interm.Node) *Eval {
  * An evaluation context equals a compiled file.
  */
 func (e *Eval) Run(globals map[string]objects.BlObject) {
-    e.evalCode(e.root, globals, nil)
+    e.evalCode(e.root, globals, nil, e.pathname,
+               "<main>")
 }
 
 func (e *Eval) evalCode(
 node *interm.Node,
-globals, locals map[string]objects.BlObject) {
+globals, locals map[string]objects.BlObject,
+pathname, name string) {
     e.frame = objects.NewBlFrame(e.frame, globals,
-                                 locals, e.pathname)
+                                 locals, pathname,
+                                 name)
     e.exec(node)
     e.frame = e.frame.Prev
 }
@@ -194,6 +197,13 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             e.ifStmt(node)
         case token.WHILE:
             e.whileStmt(node)
+        case token.FOR:
+            obj := e.exec(node.Children[1])
+            ret := e.forStmt(obj, node.Children[0].Str,
+                             node.Children[2])
+            if ret == -1 {
+                goto err
+            }
         case token.RETURN:
             if e.inFunction == 0 {
                 errpkg.SetErrmsg("return outside function")
@@ -463,15 +473,13 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
         case token.SUBSCRIPT:
             obj := e.exec(node.Children[0])
             key := e.exec(node.Children[1])
-            ret := blGetSeqItem(obj, key)
-            if ret == nil {
-                goto err
+            robj, ok := key.(*objects.BlRangeObject)
+            var ret objects.BlObject
+            if ok {
+                ret = blGetSlice(obj, robj.S, robj.E)
+            } else {
+                ret = blGetSeqItem(obj, key)
             }
-            return ret
-        case token.SLICE:
-            obj := e.exec(node.Children[0])
-            key := e.exec(node.Children[1]).(*objects.BlRangeObject)
-            ret := blGetSlice(obj, key.S, key.E)
             if ret == nil {
                 goto err
             }
@@ -483,7 +491,7 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             }
             return list
         case token.RANGE:
-            var s, end int = 0, 4294967295
+            var s, end int = 0, 0x7fffffff
             if (node.Flags & interm.FLAG_RANGELHS) != 0 {
                 v := e.exec(node.Children[0])
                 iobj, ok := v.(*objects.BlIntObject)
@@ -607,8 +615,8 @@ paramsNode, block *interm.Node) objects.BlObject {
     if (paramsNode.Flags & interm.FLAG_STARPARAM) != 0 {
         starParam = true
     } 
-    return objects.NewBlFunction(name, e.frame.Globals, params,
-                                 paramsNode.Nchildren,
+    return objects.NewBlFunction(e.pathname, name, e.frame.Globals,
+                                 params, paramsNode.Nchildren,
                                  block, starParam) 
 }
 
@@ -624,6 +632,18 @@ func (e *Eval) ifStmt(node *interm.Node) {
     if i == node.Nchildren {
         e.exec(node.Children[i - 1])
     }
+}
+
+func (e *Eval) diveoutSet() int {
+    switch e.diveout.Type {
+        case DIVEOUT_BREAK:
+            e.diveout.Type = DIVEOUT_NONE
+            return DIVEOUT_BREAK
+        case DIVEOUT_CONTINUE:
+            e.diveout.Type = DIVEOUT_NONE
+            return DIVEOUT_CONTINUE
+    }
+    return DIVEOUT_NONE
 }
 
 /*
@@ -653,17 +673,53 @@ func (e *Eval) whileStmt(node *interm.Node) {
         inner:
         for _, stmt := range block.Children {
             e.exec(stmt)
-            switch {
-                case e.diveout.Type == DIVEOUT_BREAK:
-                    e.diveout.Type = DIVEOUT_NONE
+            switch e.diveoutSet() {
+                case DIVEOUT_BREAK:
                     break outer
-                case e.diveout.Type == DIVEOUT_CONTINUE:
-                    e.diveout.Type = DIVEOUT_NONE
+                case DIVEOUT_CONTINUE:
                     break inner
             }
         }
     }
     e.loopCount--
+}
+
+/*
+ * This will be augmented once we implement
+ * dictionaries.
+ */
+func (e *Eval) forStmt(obj objects.BlObject,
+                       binding string,
+                       block *interm.Node) int {
+    typeobj := obj.BlType()
+    if seq := typeobj.Sequence; seq != nil {
+        if seq.SqItem != nil && seq.SqSize != nil {
+            e.loopCount++
+            siz := seq.SqSize(obj)
+            var i int
+            outer:
+            for ; i < siz; i++ {
+                // Bind the name => item.
+                e.set(binding, seq.SqItem(obj, i))
+                // Exec the code block.
+                inner:
+                for _, stmt := range block.Children {
+                    e.exec(stmt)
+                    switch e.diveoutSet() {
+                        case DIVEOUT_BREAK:
+                            break outer
+                        case DIVEOUT_CONTINUE:
+                            break inner
+                    }
+                }
+            }
+            e.loopCount--
+            return 0
+        }
+    }
+    errpkg.SetErrmsg("'%s' object is not iterable",
+                     typeobj.Name)
+    return -1
 }
 
 func (e *Eval) assign(node *interm.Node) int {
@@ -679,8 +735,12 @@ func (e *Eval) assign(node *interm.Node) int {
         case token.SUBSCRIPT:
             obj := e.exec(left.Children[0])
             key := e.exec(left.Children[1])
-            return blSetSeqItem(obj, e.exec(node.Children[1]),
-                                key)
+            val := e.exec(node.Children[1])
+            robj, ok := key.(*objects.BlRangeObject)
+            if ok {
+                return blSetSlice(obj, val, robj.S, robj.E)
+            }
+            return blSetSeqItem(obj, val, key)
     }
     return 0
 }
@@ -783,7 +843,7 @@ locals map[string]objects.BlObject) (obj objects.BlObject) {
         }
     }()
     e.inFunction++
-    e.evalCode(f.Block, f.Globals, locals)
+    e.evalCode(f.Block, f.Globals, locals, f.Path, f.Name)
     e.inFunction--
     if e.inFunction == 0 {
         e.loopCount = 0
