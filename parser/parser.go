@@ -363,20 +363,13 @@ func (p *Parser) forStmt() *interm.Node {
     root := p.createNode(p.current.Str, p.current.TokenType)
     p.nextToken()
 
-    argsNode := p.createNode("ARGUMENTS", token.ARGUMENTS)
-    for i := 0; i < 2; i++ {
-        if p.peekCurrent() != token.NAME {
-            p.postError("expected name")
-        }
-        nameNode := p.createNode(p.current.Str, p.current.TokenType)
-        argsNode.Add(nameNode)
-        p.nextToken()
-        if p.peekCurrent() != token.COMMA {
-            break
-        }
-        p.nextToken()
+    if p.peekCurrent() != token.NAME {
+        p.postError("expected name")
     }
-    root.Add(argsNode)
+    nameNode := p.createNode(p.current.Str, p.current.TokenType)
+    root.Add(nameNode)
+    p.nextToken()
+
     p.matchToken(token.IN, "expected 'in'")
     root.Add(p.expr())
     p.matchToken(token.DO, "expected 'do' to open block")
@@ -554,12 +547,12 @@ func (p *Parser) rangeExpr() *interm.Node {
         p.nextToken()
         tokenType := p.peekCurrent()
         /*
-         * This is a quick fix only, code will be swapped
-         * once the range construct can be used other places
-         * than a literal, i.e (x..x), or subscript [x..x].
+         * This is a quick fix only, an empty '..' can be used
+         * infront of the tokens defined below.
          */
         if tokenType != token.EOF && tokenType != token.SEMICOLON &&
-           tokenType != token.RBRACK {
+           tokenType != token.RBRACK && tokenType != token.COMMA &&
+           tokenType != token.DO && tokenType != token.RPAREN {
             root.Add(p.orExpr())
             root.Flags |= interm.FLAG_RANGERHS
         }
@@ -872,11 +865,7 @@ func (p *Parser) subscript(node *interm.Node) *interm.Node {
     root = node.GiveRootTo(root)
 
     p.nextAndSkipNL()
-    n := p.expr()
-    if n.NodeType == token.RANGE {
-        root.NodeType = token.SLICE
-    }
-    root.Add(n)
+    root.Add(p.expr())
     p.skipNL()
     p.matchToken(token.RBRACK, "expected ']' to close subscript")
     return root
