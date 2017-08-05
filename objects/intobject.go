@@ -29,8 +29,8 @@ var blIntNumbers = BlNumberMethods{
     NumMod   : blIntMod,
 }
 var blIntSequence = BlSequenceMethods{
-    SeqItem      : blIntItem,
-    SeqAssItem   : blIntAssItem,
+    SqItem      : blIntItem,
+    SqAssItem   : blIntAssItem,
 }
 var BlIntType BlTypeObject
 

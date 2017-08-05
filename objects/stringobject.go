@@ -18,11 +18,11 @@ func (bso *BlStringObject) BlType() *BlTypeObject {
     return bso.header.typeobj
 }
 var blStringSequence = BlSequenceMethods{
-    SeqItem  : blStringItem,
-    SeqConcat: blStringConcat,
-    SeqRepeat: blStringRepeat,
-    SeqSlice : blStringSlice,
-    SeqSize  : blStringSize,
+    SqItem  : blStringItem,
+    SqConcat: blStringConcat,
+    SqRepeat: blStringRepeat,
+    SqSlice : blStringSlice,
+    SqSize  : blStringSize,
 }
 var blStringMethods = []BlGFunctionObject {
     NewBlGFunction("index",      stringIndex,      GFUNC_VARARGS),
