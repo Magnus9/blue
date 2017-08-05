@@ -7,7 +7,8 @@ import (
 )
 type BlFunctionObject struct {
     header    blHeader
-    name      string
+    Path      string
+    Name      string
     Globals   map[string]BlObject
     Params    []string
     ParamLen  int
@@ -19,12 +20,13 @@ func (bfo *BlFunctionObject) BlType() *BlTypeObject {
 }
 var BlFunctionType BlTypeObject
 
-func NewBlFunction(name string, globals map[string]BlObject,
+func NewBlFunction(path, name string, globals map[string]BlObject,
                    params []string, paramLen int,
                    block *interm.Node, starParam bool) BlObject {
     bfo := &BlFunctionObject{
         header   : blHeader{&BlFunctionType},
-        name     : name,
+        Path     : path,
+        Name     : name,
         Globals  : globals,
         Params   : params,
         ParamLen : paramLen,
@@ -33,7 +35,7 @@ func NewBlFunction(name string, globals map[string]BlObject,
     }
     /*
      * If starParam == true, we reduce bfo.ParamLen with one,
-     * since it gets much easier to evaluate a func call
+     * since it gets much easier to evaluate a func call.
      */
     if starParam {
         bfo.ParamLen--
@@ -44,7 +46,7 @@ func NewBlFunction(name string, globals map[string]BlObject,
 func blFunctionRepr(obj BlObject) *BlStringObject {
     fobj := obj.(*BlFunctionObject)
     mesg := fmt.Sprintf("<function '%s', params=%d>",
-                        fobj.name, fobj.ParamLen)
+                        fobj.Name, fobj.ParamLen)
     return NewBlString(mesg)
 }
 
