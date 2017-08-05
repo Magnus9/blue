@@ -28,7 +28,7 @@ self *BlInstanceObject, f *BlFunctionObject) BlObject {
 func blMethodRepr(obj BlObject) *BlStringObject {
     mobj := obj.(*BlMethodObject)
     str := fmt.Sprintf("<method '%s.%s', params=%d>",
-                       mobj.class.name, mobj.F.name,
+                       mobj.class.name, mobj.F.Name,
                        mobj.F.ParamLen)
     return NewBlString(str)
 }
