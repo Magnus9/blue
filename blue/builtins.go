@@ -19,8 +19,8 @@ func builtinLen(obj objects.BlObject,
     }
     typeobj := arg.BlType()
     if seq := typeobj.Sequence; seq != nil {
-        if seq.SeqSize != nil {
-            return objects.NewBlInt(int64(seq.SeqSize(arg)))
+        if seq.SqSize != nil {
+            return objects.NewBlInt(int64(seq.SqSize(arg)))
         }
     }
     errpkg.SetErrmsg("'%s' object is not a sequence",
