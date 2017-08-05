@@ -8,17 +8,19 @@ type BlFrame struct {
     Globals  map[string]BlObject
     Locals   map[string]BlObject
     Pathname string
+    Name     string
     Node     *interm.Node
 }
 
 func NewBlFrame(prev *BlFrame,
                 globals, locals map[string]BlObject,
-                pathname string) *BlFrame {
+                pathname, name string) *BlFrame {
     return &BlFrame{
         Prev    : prev,
         Globals : globals,
         Locals  : locals,
         Pathname: pathname,
+        Name    : name,
     }
 }
 func (bf *BlFrame) SetNode(node *interm.Node) {
