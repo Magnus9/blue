@@ -57,12 +57,13 @@ type BlNumberMethods struct {
     NumCoerce func(*BlObject, *BlObject) int
 }
 type BlSequenceMethods struct {
-    SeqItem       func(BlObject, int) BlObject
-    SeqAssItem    func(BlObject, BlObject, int) int
-    SeqConcat     func(BlObject, BlObject) BlObject
-    SeqRepeat     func(BlObject, BlObject) BlObject
-    SeqSlice      func(BlObject, int, int) BlObject
-    SeqSize       func(BlObject) int
+    SqItem       func(BlObject, int) BlObject
+    SqAssItem    func(BlObject, BlObject, int) int
+    SqConcat     func(BlObject, BlObject) BlObject
+    SqRepeat     func(BlObject, BlObject) BlObject
+    SqSlice      func(BlObject, int, int) BlObject
+    SqAssSlice   func(BlObject, BlObject, int, int) int
+    SqSize       func(BlObject) int
 }
 /*
  * The implementation object of a datatype.
