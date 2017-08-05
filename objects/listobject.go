@@ -23,11 +23,12 @@ func (blo *BlListObject) GetList() []BlObject {
     return blo.list
 }
 var blListSequence = BlSequenceMethods{
-    SeqItem      : blListItem,
-    SeqAssItem   : blListAssItem,
-    SeqRepeat    : blListRepeat,
-    SeqSlice     : blListSlice,
-    SeqSize      : blListSize,
+    SqItem      : blListItem,
+    SqAssItem   : blListAssItem,
+    SqRepeat    : blListRepeat,
+    SqSlice     : blListSlice,
+    SqAssSlice  : blListAssSlice,
+    SqSize      : blListSize,
 }
 var blListMethods = []BlGFunctionObject{
     NewBlGFunction("append",  listAppend,  GFUNC_VARARGS),
@@ -48,7 +49,7 @@ func NewBlList(lsize int) *BlListObject {
 
 func blListItem(obj BlObject, num int) BlObject {
     lobj := obj.(*BlListObject)
-    if num > lobj.lsize || num < 0 {
+    if num >= lobj.lsize || num < 0 {
         errpkg.SetErrmsg("subscript position out of bounds")
         return nil
     }
@@ -102,9 +103,45 @@ func blListSlice(obj BlObject, s, e int) BlObject {
     }
     list := NewBlList(0)
     for i := s; i < e; i++ {
-        list.Append(lobj.list[i - s])
+        list.Append(lobj.list[i])
     }
     return list
+}
+
+func blListAssSlice(obj, value BlObject, s, e int) int {
+    lobj2, ok := value.(*BlListObject)
+    if !ok {
+        errpkg.SetErrmsg("expected list for slice assigment" +
+                         " found '%s'", value.BlType().Name)
+        return -1
+    }
+    lobj := obj.(*BlListObject)
+    if s < 0 {
+        s = 0
+    } else if s > lobj.lsize {
+        s = lobj.lsize
+    }
+    if e < s {
+        e = s
+    } else if e > lobj.lsize {
+        e = lobj.lsize
+    }
+    /*
+     * Algorithm below might work better with for loops;
+     * removing items, changing item locations etc..
+     */
+    siz := lobj2.lsize - (e - s)
+    if siz < 0 {
+        lobj.list = append(lobj.list[s:e + siz], lobj.list[e:]...)
+        for i := s; i < e + siz; i++ {
+            lobj.list[i] = lobj2.list[i - s]
+        }
+    } else {
+        lobj.list = append(lobj.list[:s], append(lobj2.list,
+                           lobj.list[e:]...)...)
+    }
+    lobj.lsize += siz
+    return 0
 }
 
 func blListSize(obj BlObject) int {
@@ -180,11 +217,11 @@ func blListInit(obj *BlTypeObject, args ...BlObject) BlObject {
     }
     typeobj := arg.BlType()
     if seq := typeobj.Sequence; seq != nil {
-        if seq.SeqItem == nil || seq.SeqSize == nil {
+        if seq.SqItem == nil || seq.SqSize == nil {
             goto err
         }
-        for i := 0; i < seq.SeqSize(arg); i++ {
-            lobj.Append(seq.SeqItem(arg, i))
+        for i := 0; i < seq.SqSize(arg); i++ {
+            lobj.Append(seq.SqItem(arg, i))
         }
         return lobj
     }
