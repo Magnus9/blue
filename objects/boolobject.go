@@ -48,6 +48,14 @@ func blBoolCompare(a, b BlObject) int {
     }
 }
 
+func blBoolHash(obj BlObject) int64 {
+    bobj := obj.(*BlBoolObject)
+    if bobj.value == true {
+        return 1
+    }
+    return 0
+}
+
 /*
  * Patch in the use of EvalCond in later stages.
  * For now there is enough conditions as it is,
@@ -83,6 +91,7 @@ func blInitBool() {
         Repr    : blBoolRepr,
         EvalCond: blBoolEvalCond,
         Compare : blBoolCompare,
+        hash    : blBoolHash,
         Init    : blBoolInit,
     }
     blTypeFinish(&BlBoolType)

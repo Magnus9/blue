@@ -10,9 +10,10 @@ import (
 const STRING_MAX = 0x00ffffff
 
 type BlStringObject struct {
-    header blHeader
-    Value  string
-    vsize  int
+    header     blHeader
+    Value      string
+    vsize      int
+    cachedHash int64
 }
 func (bso *BlStringObject) BlType() *BlTypeObject {
     return bso.header.typeobj
@@ -37,9 +38,11 @@ var BlStringType BlTypeObject
 
 func NewBlString(value string) *BlStringObject {
     return &BlStringObject{
-        header  : blHeader{&BlStringType},
-        Value   : value,
-        vsize   : len(value),
+        header    : blHeader{&BlStringType},
+        Value     : value,
+        vsize     : len(value),
+        // Set cachedHash to -1 (not cached yet)
+        cachedHash: -1,
     }
 }
 
@@ -150,6 +153,25 @@ func blStringCompare(a, b BlObject) int {
     default:
         return 0
     }
+}
+
+func blStringHash(obj BlObject) int64 {
+    sobj := obj.(*BlStringObject)
+    if sobj.cachedHash != -1 {
+        fmt.Println("its cached!")
+        return sobj.cachedHash
+    }
+    sum := int64(sobj.Value[0] << 7)
+    for i := 1; i < sobj.vsize; i++ {
+        sum = (1000003 * sum) ^ int64(sobj.Value[i])
+    }
+    sum ^= int64(sobj.vsize)
+    if sum == -1 {
+        // Backroll 1.
+        sum = -2
+    }
+    sobj.cachedHash = sum
+    return sum
 }
 
 func blStringInit(obj *BlTypeObject,
@@ -302,6 +324,7 @@ func blInitString() {
         GetMember: blStringGetMember,
         EvalCond : blStringEvalCond,
         Compare  : blStringCompare,
+        hash     : blStringHash,
         Init     : blStringInit,
         Sequence : &blStringSequence,
         methods  : blStringMethods,

@@ -181,6 +181,10 @@ func blIntCompare(a, b BlObject) int {
     }
 }
 
+func blIntHash(obj BlObject) int64 {
+    return obj.(*BlIntObject).Value
+}
+
 func blIntInit(obj *BlTypeObject,
                args ...BlObject) BlObject {
     var arg BlObject
@@ -207,6 +211,7 @@ func blInitInt() {
         Repr    : blIntRepr,
         EvalCond: blIntEvalCond,
         Compare : blIntCompare,
+        hash    : blIntHash,
         Init    : blIntInit,
         Numbers : &blIntNumbers,
         Sequence: &blIntSequence,
