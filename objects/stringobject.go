@@ -158,7 +158,6 @@ func blStringCompare(a, b BlObject) int {
 func blStringHash(obj BlObject) int64 {
     sobj := obj.(*BlStringObject)
     if sobj.cachedHash != -1 {
-        fmt.Println("its cached!")
         return sobj.cachedHash
     }
     sum := int64(sobj.Value[0] << 7)
