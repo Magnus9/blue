@@ -30,26 +30,56 @@ func blSetMember(obj, value objects.BlObject,
     return -1
 }
 
-func blGetSeqItem(obj objects.BlObject,
-                  key objects.BlObject) objects.BlObject {
+func blGetItem(obj, key objects.BlObject) objects.BlObject {
     typeobj := obj.BlType()
-    /*
-     * Start by validating that key is type
-     * integer.
-     */
-    iobj, ok := key.(*objects.BlIntObject)
-    if !ok {
-        errpkg.SetErrmsg("'%s' indices must be integers",
-                         typeobj.Name)
-        return nil
+    mapping := typeobj.Mapping
+
+    if mapping != nil && mapping.MpItem != nil {
+        return mapping.MpItem(obj, key)
     }
-    siz := int(iobj.Value)
+    if seq := typeobj.Sequence; seq != nil {
+        iobj, ok := key.(*objects.BlIntObject)
+        if !ok {
+            errpkg.SetErrmsg("'%s' indices must be integers",
+                             typeobj.Name)
+            return nil
+        }
+        return blGetSeqItem(obj, int(iobj.Value))
+    }
+    errpkg.SetErrmsg("'%s' object is not subscriptable",
+                     typeobj.Name)
+    return nil
+}
+
+func blSetItem(obj, value, key objects.BlObject) int {
+    typeobj := obj.BlType()
+    mapping := typeobj.Mapping
+
+    if mapping != nil && mapping.MpAssItem != nil {
+        return mapping.MpAssItem(obj, value, key)
+    }
+    if seq := typeobj.Sequence; seq != nil {
+        iobj, ok := key.(*objects.BlIntObject)
+        if !ok {
+            errpkg.SetErrmsg("'%s' indices must be integers",
+                             typeobj.Name)
+            return -1
+        }
+        return blSetSeqItem(obj, value, int(iobj.Value))
+    }
+    errpkg.SetErrmsg("'%s' object does not support item" +
+                     " assignment", typeobj.Name)
+    return -1
+}
+
+func blGetSeqItem(obj objects.BlObject, pos int) objects.BlObject {
+    typeobj := obj.BlType()
     if seq := typeobj.Sequence; seq != nil {
         if seq.SqItem != nil {
-            if siz < 0 && seq.SqSize != nil {
-                siz += seq.SqSize(obj)
+            if pos < 0 && seq.SqSize != nil {
+                pos += seq.SqSize(obj)
             }
-            return seq.SqItem(obj, siz)
+            return seq.SqItem(obj, pos)
         }
     }
     errpkg.SetErrmsg("'%s' object is not subscriptable",
@@ -57,25 +87,14 @@ func blGetSeqItem(obj objects.BlObject,
     return nil
 }
 
-func blSetSeqItem(obj, value, key objects.BlObject) int {
+func blSetSeqItem(obj, value objects.BlObject, pos int) int {
     typeobj := obj.BlType()
-    /*
-     * Start by validating that key is type
-     * integer.
-     */
-    iobj, ok := key.(*objects.BlIntObject)
-    if !ok {
-        errpkg.SetErrmsg("'%s' indices must be integers",
-                         typeobj.Name)
-        return -1
-    }
-    siz := int(iobj.Value)
     if seq := typeobj.Sequence; seq != nil {
         if seq.SqAssItem != nil {
-            if siz < 0 && seq.SqSize != nil {
-                siz += seq.SqSize(obj)
+            if pos < 0 && seq.SqSize != nil {
+                pos += seq.SqSize(obj)
             }
-            return seq.SqAssItem(obj, value, siz)
+            return seq.SqAssItem(obj, value, pos)
         }
     }
     errpkg.SetErrmsg("'%s' object does not support item" +

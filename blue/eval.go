@@ -478,7 +478,7 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
             if ok {
                 ret = blGetSlice(obj, robj.S, robj.E)
             } else {
-                ret = blGetSeqItem(obj, key)
+                ret = blGetItem(obj, key)
             }
             if ret == nil {
                 goto err
@@ -490,6 +490,17 @@ func (e *Eval) exec(node *interm.Node) objects.BlObject {
                 list.Append(e.exec(elem))
             }
             return list
+        case token.HASH:
+            m := objects.NewBlMap()
+            for _, elem := range node.Children {
+                key := e.exec(elem.Children[0])
+                val := e.exec(elem.Children[1])
+                ret := blSetItem(m, val, key)
+                if ret == -1 {
+                    goto err
+                }
+            }
+            return m
         case token.RANGE:
             var s, end int = 0, 0x7fffffff
             if (node.Flags & interm.FLAG_RANGELHS) != 0 {
@@ -740,7 +751,7 @@ func (e *Eval) assign(node *interm.Node) int {
             if ok {
                 return blSetSlice(obj, val, robj.S, robj.E)
             }
-            return blSetSeqItem(obj, val, key)
+            return blSetItem(obj, val, key)
     }
     return 0
 }
@@ -797,7 +808,7 @@ func (e *Eval) augassign(node *interm.Node) int {
         case token.SUBSCRIPT:
             obj := e.exec(left.Children[0])
             key := e.exec(left.Children[1])
-            return blSetSeqItem(obj, ret, key)
+            return blSetItem(obj, ret, key)
     }
     return 0
 }
