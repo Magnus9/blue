@@ -31,6 +31,7 @@ type setterfunc func(BlObject, string, BlObject) int
 type evalcondfunc func(BlObject) bool
 type initfunc func(*BlTypeObject, ...BlObject) BlObject
 type compfunc func(BlObject, BlObject) int
+type hashfunc func(BlObject) int64
 
 type unaryfunc func(BlObject) BlObject
 type binaryfunc func(BlObject, BlObject) BlObject
@@ -56,15 +57,23 @@ type BlNumberMethods struct {
     NumMod    binaryfunc
     NumCoerce func(*BlObject, *BlObject) int
 }
+
 type BlSequenceMethods struct {
+    SqSize       func(BlObject) int
     SqItem       func(BlObject, int) BlObject
     SqAssItem    func(BlObject, BlObject, int) int
     SqConcat     func(BlObject, BlObject) BlObject
     SqRepeat     func(BlObject, BlObject) BlObject
     SqSlice      func(BlObject, int, int) BlObject
     SqAssSlice   func(BlObject, BlObject, int, int) int
-    SqSize       func(BlObject) int
 }
+
+type BlMappingMethods struct {
+    MpSize       func(BlObject) int
+    MpItem       func(BlObject, BlObject) BlObject
+    MpAssItem    func(BlObject, BlObject, BlObject) int
+}
+
 /*
  * The implementation object of a datatype.
  * Every Blue object is attached to one of these.
@@ -78,9 +87,11 @@ type BlTypeObject struct {
     SetMember   setterfunc
     EvalCond    evalcondfunc
     Compare     compfunc
+    hash        hashfunc
     Init        initfunc
     Numbers     *BlNumberMethods
     Sequence    *BlSequenceMethods
+    Mapping     *BlMappingMethods
     methods     []BlGFunctionObject
     fields      []BlFields
     members     map[string]BlObject
@@ -337,6 +348,20 @@ out:
     return -2
 }
 
+/*
+ * Used to make a hash value out of an object. Returns -1
+ * if the object passed is not hashable.
+ */
+func blObjectHash(obj BlObject) int64 {
+    typeobj := obj.BlType()
+    if typeobj.hash != nil {
+        return typeobj.hash(obj)
+    }
+    errpkg.SetErrmsg("'%s' object is not hashable",
+                     typeobj.Name)
+    return -1
+}
+
 func BlInitTypes() {
     // Initialize the string type.
     blInitString()
@@ -346,6 +371,8 @@ func BlInitTypes() {
     blInitFloat()
     // Initialize the list type.
     blInitList()
+    // Initialize the map type.
+    blInitMap()
     // Initialize the range type.
     blInitRange()
     // Initialize the file type.
