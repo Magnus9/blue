@@ -60,9 +60,15 @@ func blMapAssItem(obj, value, key BlObject) int {
         return -1
     }
     mobj := obj.(*BlMapObject)
-    mobj.m[hash] = MapPair{
-        key: key,
-        val: value,
+    pair, ok := mobj.m[hash]
+    if ok {
+        pair.val = value
+    } else {
+        mobj.m[hash] = MapPair{
+            key: key,
+            val: value,
+        }
+        mobj.mlen++
     }
     return 0
 }
